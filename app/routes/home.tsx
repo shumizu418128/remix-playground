@@ -161,7 +161,8 @@ export async function action({ request }: Route.ActionArgs) {
         event.open_status === "preopen" &&
         event.place &&
         !/オンライン|online|abema/i.test(event.place) &&
-        (!event.limit || event.limit > 10);
+        (!event.limit || event.limit > 10) &&
+        !/(もくもく|coderdojo|永田町)/i.test(event.title ?? "");
 
       if (!passesBaseConditions) {
         return false;
