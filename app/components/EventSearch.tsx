@@ -56,7 +56,8 @@ export function EventSearch() {
   const [keyword, setKeyword] = useState("");
   const [startDate, setStartDate] = useState(formatDate(today));
   const [endDate, setEndDate] = useState(formatDate(sixMonthsLater));
-  const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>([]);
+  const [selectedPrefectures, setSelectedPrefectures] =
+    useState<string[]>(["tokyo"]);
 
   /**
    * 都道府県のチェックボックスの変更を処理

@@ -56,6 +56,8 @@ const ensureLeafletAssets = () => {
 export interface MapProps {
   /** マッピング対象のイベント配列 */
   events: EventListItem[];
+  /** 読み込み中フラグ */
+  isLoading?: boolean;
 }
 
 /**
@@ -67,7 +69,7 @@ export interface MapProps {
  * Returns:
  *   イベントが存在する場合はLeafletマップ、存在しない場合は案内文。
  */
-export function Map({ events }: MapProps) {
+export function Map({ events, isLoading = false }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
@@ -86,6 +88,10 @@ export function Map({ events }: MapProps) {
   }, [events]);
 
   useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
     if (!containerRef.current || !geoEvents.length) {
       return;
     }
@@ -151,7 +157,7 @@ export function Map({ events }: MapProps) {
     return () => {
       isMounted = false;
     };
-  }, [geoEvents]);
+  }, [geoEvents, isLoading]);
 
   useEffect(() => {
     return () => {
@@ -160,6 +166,15 @@ export function Map({ events }: MapProps) {
       markersLayerRef.current = null;
     };
   }, []);
+
+  if (isLoading) {
+    return (
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">マップ表示</h2>
+        <div className="w-full h-96 rounded-lg shadow bg-gray-200 dark:bg-gray-700 animate-pulse" />
+      </section>
+    );
+  }
 
   if (!geoEvents.length) {
     return (
@@ -175,7 +190,7 @@ export function Map({ events }: MapProps) {
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">マップ表示</h2>
       <div
         ref={containerRef}
-        className="w-full h-96 rounded-lg shadow bg-gray-200 dark:bg-gray-700 overflow-hidden"
+        className="w-full h-200 rounded-lg shadow bg-gray-200 dark:bg-gray-700 overflow-hidden"
       />
     </section>
   );

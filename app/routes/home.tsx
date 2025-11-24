@@ -117,17 +117,19 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="container mx-auto max-w-6xl space-y-8">
-        <EventSearch />
+        {!shouldShowList && <EventSearch />}
         {shouldShowList && (
-          <div className="grid grid-cols-2 gap-8">
-            {events.length > 0 && <Map events={events} />}
-            <EventList
-              events={events}
-              isLoading={isSubmitting}
-              error={errorMessage}
-              emptyMessage="条件に一致するイベントが見つかりませんでした。"
-            />
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-8">
+              <Map events={events} isLoading={isSubmitting} />
+              <EventList
+                events={events}
+                isLoading={isSubmitting}
+                error={errorMessage}
+                emptyMessage="条件に一致するイベントが見つかりませんでした。"
+              />
+            </div>
+          </>
         )}
       </div>
     </div>
