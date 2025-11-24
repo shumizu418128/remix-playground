@@ -159,7 +159,8 @@ export async function action({ request }: Route.ActionArgs) {
     const filteredEvents = events.filter((event) => {
       const passesBaseConditions =
         event.open_status === "preopen" &&
-        event.place !== "オンライン" &&
+        event.place &&
+        !/オンライン|online/i.test(event.place) &&
         (!event.limit || event.limit > 10);
 
       if (!passesBaseConditions) {
