@@ -18,6 +18,67 @@ type ActionResponse = {
   errorMessage?: string;
 };
 
+/**
+ * ユーザー入力から除外キーワードと含めるキーワードを抽出します。
+ *
+ * @param input - フォームに入力されたキーワード文字列
+ * @returns 抽出結果
+ */
+const parseKeywordInput = (input: string | null) => {
+  if (!input) {
+    return { includeKeywords: [] as string[], excludeKeywords: [] as string[] };
+  }
+
+  const tokens = input
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  const includeKeywords: string[] = [];
+  const excludeKeywords: string[] = [];
+
+  tokens.forEach((token) => {
+    if (token.startsWith("-") && token.length > 1) {
+      excludeKeywords.push(token.slice(1));
+    } else if (token !== "-") {
+      includeKeywords.push(token);
+    }
+  });
+
+  return { includeKeywords, excludeKeywords };
+};
+
+/**
+ * HTMLタグを除去した文字列を返します。
+ *
+ * @param value - HTMLを含む可能性のある文字列
+ * @returns タグ除去後の文字列
+ */
+const stripHtmlTags = (value?: string) => {
+  if (!value) {
+    return "";
+  }
+  return value.replace(/<[^>]*>?/g, "");
+};
+
+/**
+ * イベント情報から検索対象のテキストを作成します。
+ *
+ * @param event - Connpassイベント
+ * @returns 検索対象のテキスト
+ */
+const buildSearchableText = (event: EventListItem) => {
+  return [
+    event.title,
+    event.place,
+    event.address,
+    stripHtmlTags(event.description),
+  ]
+    .filter((field): field is string => Boolean(field))
+    .join(" ")
+    .toLowerCase();
+};
+
 export async function action({ request }: Route.ActionArgs) {
   const { CONNPASS_API_KEY } = getServerEnv();
   const formData = await request.formData();
@@ -31,7 +92,9 @@ export async function action({ request }: Route.ActionArgs) {
     endDateValue && !Number.isNaN(Date.parse(endDateValue))
       ? new Date(endDateValue)
       : startDate;
-  const keyword = formData.get("keyword") as string;
+  const rawKeyword = formData.get("keyword");
+  const keywordInput = typeof rawKeyword === "string" ? rawKeyword : "";
+  const { includeKeywords, excludeKeywords } = parseKeywordInput(keywordInput);
   const prefectures = formData.getAll("prefectures") as string[];
 
   // 開始日から終了日までの日付を配列に入れる
@@ -48,8 +111,8 @@ export async function action({ request }: Route.ActionArgs) {
   const params = new URLSearchParams();
   const maxCount = 100;
   params.set("count", maxCount.toString());
-  if (keyword) {
-    params.set("keyword", keyword);
+  if (includeKeywords.length > 0) {
+    params.set("keyword", includeKeywords.join(" "));
   }
   if (dates.length > 0) {
     dates.forEach((date) => {
@@ -80,13 +143,36 @@ export async function action({ request }: Route.ActionArgs) {
     const events = result.events ?? [];
 
     // レスポンスのフィルター
+    const normalizedIncludes = includeKeywords.map((kw) => kw.toLowerCase());
+    const normalizedExcludes = excludeKeywords.map((kw) => kw.toLowerCase());
     const filteredEvents = events.filter((event) => {
-      return event.open_status === "preopen" && event.place !== "オンライン" && (!event.limit || event.limit > 10);
+      const passesBaseConditions =
+        event.open_status === "preopen" &&
+        event.place !== "オンライン" &&
+        (!event.limit || event.limit > 10);
+
+      if (!passesBaseConditions) {
+        return false;
+      }
+
+      if (normalizedIncludes.length === 0 && normalizedExcludes.length === 0) {
+        return true;
+      }
+
+      const searchableText = buildSearchableText(event);
+      const matchesIncludes =
+        normalizedIncludes.length === 0 ||
+        normalizedIncludes.every((keyword) => searchableText.includes(keyword));
+      const matchesExcludes = normalizedExcludes.every(
+        (keyword) => !searchableText.includes(keyword)
+      );
+
+      return matchesIncludes && matchesExcludes;
     });
 
     // descriptionのhtmlタグを削除
     filteredEvents.forEach((event) => {
-      event.description = event.description.replace(/<[^>]*>?/g, "");
+      event.description = stripHtmlTags(event.description);
     });
 
     // 開催日順にソート
@@ -118,7 +204,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="w-full space-y-8">
         {!shouldShowList && (
-          <div className="max-w-md mx-auto">
+          <div className="max-w-lg mx-auto">
             <EventSearch />
           </div>
         )}
