@@ -46,7 +46,8 @@ export async function action({ request }: Route.ActionArgs) {
 
   // 検索パラメータを作成
   const params = new URLSearchParams();
-  params.set("count", "60");  // 最大100件取得
+  const maxCount = 100;
+  params.set("count", maxCount.toString());
   if (keyword) {
     params.set("keyword", keyword);
   }
