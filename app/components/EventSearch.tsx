@@ -50,12 +50,13 @@ export function EventSearch() {
   const formatDate = (date: Date) => date.toISOString().split("T")[0];
 
   const today = new Date();
-  const sixMonthsLater = new Date(today);
-  sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+  const defaultEnd = new Date(today);
+  // 1ヶ月後を終了日とする
+  defaultEnd.setMonth(defaultEnd.getMonth() + 1);
 
   const [keyword, setKeyword] = useState("");
   const [startDate, setStartDate] = useState(formatDate(today));
-  const [endDate, setEndDate] = useState(formatDate(sixMonthsLater));
+  const [endDate, setEndDate] = useState(formatDate(defaultEnd));
   const [selectedPrefectures, setSelectedPrefectures] =
     useState<string[]>(["tokyo"]);
 
@@ -92,11 +93,11 @@ export function EventSearch() {
 
 
   return (
-    <div className="w-full mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+    <div className="w-full mx-auto p-5 bg-white dark:bg-gray-800 rounded-lg shadow-md max-h-[45vh] min-h-[280px] overflow-y-auto">
+      <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
         イベント検索
       </h2>
-      <Form method="post" className="space-y-6">
+      <Form method="post" className="space-y-4">
         {/* キーワード入力 */}
         <div>
           <label

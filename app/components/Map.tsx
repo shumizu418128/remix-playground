@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { EventListItem } from "./EventList";
+import { formatDateTime } from "../utils/utils";
 
 const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
@@ -87,6 +88,20 @@ export function Map({ events, isLoading = false }: MapProps) {
     }, []);
   }, [events]);
 
+  const scrollToEventArticle = (eventId: number) => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const target = document.getElementById(`event-${eventId}`);
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    target.focus({ preventScroll: true });
+  };
+
   useEffect(() => {
     if (isLoading) {
       return;
@@ -128,13 +143,52 @@ export function Map({ events, isLoading = false }: MapProps) {
 
         const markersLayer = L.layerGroup();
 
+        const createPopupContent = (event: EventListItem) => {
+          const container = document.createElement("div");
+          container.className = "space-y-1";
+
+          const titleButton = document.createElement("button");
+          titleButton.type = "button";
+          titleButton.className =
+            "text-left text-blue-600 hover:underline font-semibold focus:outline-none";
+          titleButton.textContent = event.title;
+          titleButton.addEventListener("click", () => {
+            scrollToEventArticle(event.id);
+          });
+
+          const start = formatDateTime(event.started_at);
+          const end = formatDateTime(event.ended_at);
+          const isSameDay =
+            new Date(event.started_at).toDateString() ===
+            new Date(event.ended_at).toDateString();
+          const dateRangeDisplay = (() => {
+            if (!isSameDay) {
+              return `${start} ~ ${end}`;
+            }
+            const startParts = start.split(" ");
+            const endParts = end.split(" ");
+            const startTime = startParts[startParts.length - 1];
+            const endTime = endParts[endParts.length - 1];
+            const startDay = startParts.slice(0, -1).join(" ");
+            return `${startDay} ${startTime}~${endTime}`;
+          })();
+
+          const dateText = document.createElement("p");
+          dateText.className = "text-xs text-gray-600";
+          dateText.textContent = dateRangeDisplay;
+
+          if (event.event_type === "advertisement") {
+            dateText.textContent += " (connpass上からは応募不可)";
+          }
+
+          container.appendChild(titleButton);
+          container.appendChild(dateText);
+          return container;
+        };
+
         geoEvents.forEach((event) => {
           L.marker([event.lat, event.lon])
-            .bindPopup(
-              `<strong>${event.title}</strong><br/>${event.place ? `${event.place}<br/>` : ""}${
-                event.address ?? ""
-              }`,
-            )
+            .bindPopup(createPopupContent(event))
             .addTo(markersLayer);
         });
 
@@ -171,7 +225,7 @@ export function Map({ events, isLoading = false }: MapProps) {
     return (
       <section className="space-y-2">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">マップ表示</h2>
-        <div className="w-full h-96 rounded-lg shadow bg-gray-200 dark:bg-gray-700 animate-pulse" />
+        <div className="w-full h-128 rounded-lg shadow bg-gray-200 dark:bg-gray-700 animate-pulse" />
       </section>
     );
   }
@@ -187,10 +241,9 @@ export function Map({ events, isLoading = false }: MapProps) {
 
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">マップ表示</h2>
       <div
         ref={containerRef}
-        className="w-full h-200 rounded-lg shadow bg-gray-200 dark:bg-gray-700 overflow-hidden"
+        className="w-full h-[45vh] min-h-[280px] max-h-[520px] rounded-lg shadow bg-gray-200 dark:bg-gray-700 overflow-hidden"
       />
     </section>
   );

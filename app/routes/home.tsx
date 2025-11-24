@@ -4,7 +4,7 @@ import { EventList } from "../components/EventList";
 import type { EventListItem } from "../components/EventList";
 import { EventSearch } from "../components/EventSearch";
 import { Map } from "../components/Map";
-import { getServerEnv } from "../utils/env.server";
+import { getServerEnv } from "../utils/utils";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -46,7 +46,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   // 検索パラメータを作成
   const params = new URLSearchParams();
-  params.set("count", "10");  // 最大100件取得
+  params.set("count", "60");  // 最大100件取得
   if (keyword) {
     params.set("keyword", keyword);
   }
@@ -80,7 +80,7 @@ export async function action({ request }: Route.ActionArgs) {
 
     // レスポンスのフィルター
     const filteredEvents = events.filter((event) => {
-      return event.open_status === "preopen" && event.place !== "オンライン";
+      return event.open_status === "preopen" && event.place !== "オンライン" && (!event.limit || event.limit > 10);
     });
 
     // descriptionのhtmlタグを削除
@@ -116,20 +116,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="container mx-auto max-w-6xl space-y-8">
-        {!shouldShowList && <EventSearch />}
+      <div className="w-full space-y-8">
+        {!shouldShowList && (
+          <div className="max-w-md mx-auto">
+            <EventSearch />
+          </div>
+        )}
         {shouldShowList && (
-          <>
-            <div className="grid grid-cols-2 gap-8">
+          <div className="grid gap-8 items-start lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
+            <div className="sticky top-6 space-y-4 self-start">
+              <EventSearch />
               <Map events={events} isLoading={isSubmitting} />
-              <EventList
-                events={events}
-                isLoading={isSubmitting}
-                error={errorMessage}
-                emptyMessage="条件に一致するイベントが見つかりませんでした。"
-              />
             </div>
-          </>
+            <EventList
+              events={events}
+              isLoading={isSubmitting}
+              error={errorMessage}
+              emptyMessage="条件に一致するイベントが見つかりませんでした。"
+            />
+          </div>
         )}
       </div>
     </div>

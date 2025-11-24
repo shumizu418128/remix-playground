@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-
+import { formatDateTime } from "../utils/utils";
 /**
  * Connpass APIから返るイベント情報
  */
@@ -26,6 +26,13 @@ export interface EventListItem {
   event_type: string;
   /** 募集状況 */
   open_status: string;
+  /** グループ情報 */
+  group?: {
+    id: number;
+    subdomain: string;
+    title: string;
+    url: string;
+  } | null;
   /** 住所 */
   address: string;
   /** 会場名 */
@@ -34,8 +41,6 @@ export interface EventListItem {
   lat: any;
   /** 経度 */
   lon: any;
-  /** 主催者名 */
-  owner_display_name: string;
   /** 参加確定人数 */
   accepted: number;
   /** 補欠人数 */
@@ -57,34 +62,6 @@ export interface EventListProps {
   /** イベントが存在しないときの代替メッセージ */
   emptyMessage?: ReactNode;
 }
-
-/**
- * 日時文字列を日本語ロケールで読みやすく整形します。
- *
- * Args:
- *   value: ISO形式などの日時文字列。
- *
- * Returns:
- *   整形済み文字列。変換できない場合は入力値、値がない場合はnull。
- */
-const formatDateTime = (value?: string) => {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    month: "numeric",
-    day: "numeric",
-    weekday: "short",
-    hour: "numeric",
-    minute: "numeric",
-  }).format(date);
-};
 
 /**
  * イベント情報をカード形式で表示します。
@@ -136,71 +113,119 @@ export function EventList({
       {events.map((event) => {
         const start = formatDateTime(event.started_at);
         const end = formatDateTime(event.ended_at);
+        const isSameDay =
+          new Date(event.started_at).toDateString() ===
+          new Date(event.ended_at).toDateString();
+        const dateRangeDisplay = (() => {
+          if (!isSameDay) {
+            return `${start} ~ ${end}`;
+          }
+          const startParts = start.split(" ");
+          const endParts = end.split(" ");
+          const startTime = startParts[startParts.length - 1];
+          const endTime = endParts[endParts.length - 1];
+          const startDay = startParts.slice(0, -1).join(" ");
+          return `${startDay} ${startTime}~${endTime}`;
+        })();
 
         return (
           <article
+            id={`event-${event.id}`}
+            tabIndex={-1}
             key={event.id}
-            className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow space-y-4"
+            className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow max-h-[30vh] overflow-hidden"
           >
-            <header className="space-y-1">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {event.hash_tag ? `#${event.hash_tag}` : "イベント"}
-              </p>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                <a
-                  href={event.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
-                  {event.title}
-                </a>
-              </h3>
-              {event.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                  {event.description}
-                </p>
+            <div className="flex flex-col md:flex-row gap-4">
+              {event.image_url ? (
+                <figure className="md:w-1/4 max-h-[30vh] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                  <a
+                    href={event.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <img
+                      src={event.image_url}
+                      alt={`${event.title} のイメージ画像`}
+                      className="h-48 max-h-full object-contain"
+                      loading="lazy"
+                    />
+                  </a>
+                </figure>
+              ) : (
+                <figure className="md:w-1/4 max-h-[30vh] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center" />
               )}
-            </header>
+              <div className="flex-1 space-y-4">
+                <header className="space-y-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 space-x-1">
+                    {event.hash_tag && <span>#{event.hash_tag}</span>}
+                    {event.group && (
+                      <a
+                        href={event.group.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {event.group.title}
+                      </a>
+                    )}
+                  </p>
+                  <h3 className="text-xl font-semibold">
+                    <a
+                      href={event.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {event.title}
+                    </a>
+                  </h3>
+                  {event.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+                      {event.description}
+                    </p>
+                  )}
+                </header>
 
-            <dl className="grid gap-4 md:grid-cols-2">
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  日時
-                </dt>
-                <dd className="text-sm text-gray-800 dark:text-gray-100">
-                  {new Date(event.started_at).toDateString() === new Date(event.ended_at).toDateString()
-                    ? `${start.split(' ').slice(0, -1).join(' ')} ${start.split(' ').pop()}~${end.split(' ').pop()}`
-                    : `${start} ~ ${end}`}
-                </dd>
+                <dl className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      日時
+                    </dt>
+                    <dd className="text-sm text-gray-800 dark:text-gray-100">
+                      {dateRangeDisplay}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      会場
+                    </dt>
+                    <dd className="text-sm text-gray-800 dark:text-gray-100">
+                      {event.place}
+                      {event.address && (
+                        <>
+                          <br />
+                          {event.address}
+                        </>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      募集状況
+                    </dt>
+                    <dd className="text-sm text-gray-800 dark:text-gray-100">
+                      {event.accepted} / {event.limit ?? "上限なし"}
+                      {event.waiting ? `（補欠 ${event.waiting}）` : ""}
+                    </dd>
+                  </div>
+                  {event.event_type === "advertisement" && (
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      connpass上からは応募不可
+                    </p>
+                  )}
+                </dl>
               </div>
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  会場
-                </dt>
-                <dd className="text-sm text-gray-800 dark:text-gray-100">
-                  {event.place}
-                  {event.address ? `（${event.address}）` : ""}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  募集状況
-                </dt>
-                <dd className="text-sm text-gray-800 dark:text-gray-100">
-                  {event.accepted} / {event.limit}
-                  {event.waiting ? `（補欠 ${event.waiting}）` : ""}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  主催
-                </dt>
-                <dd className="text-sm text-gray-800 dark:text-gray-100">
-                  {event.owner_display_name}
-                </dd>
-              </div>
-            </dl>
+            </div>
           </article>
         );
       })}
