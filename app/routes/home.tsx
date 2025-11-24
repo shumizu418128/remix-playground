@@ -94,13 +94,17 @@ export async function action({ request }: Route.ActionArgs) {
       return new Date(a.started_at).getTime() - new Date(b.started_at).getTime();
     });
 
+    const eventsWithoutDescription = filteredEvents.map(event => {
+      const { description, ...eventWithoutDescription } = event;
+      return eventWithoutDescription;
+    });
     const payload: ActionResponse = { events: filteredEvents };
     const fs = await import("fs").then(m => m.promises);
     const path = await import("path").then(m => m.default);
     const logDir = path.join(process.cwd(), "logs");
     await fs.mkdir(logDir, { recursive: true });
-    const logFile = path.join(logDir, `events-${new Date().toISOString().split("T")[0]}.json`);
-    await fs.appendFile(logFile, JSON.stringify(payload) + "\n");
+    const logFile = path.join(logDir, `events.json`);
+    await fs.appendFile(logFile, JSON.stringify({ events: eventsWithoutDescription }) + "\n");
 
     return Response.json(payload);
   } catch (error) {
