@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode, type MouseEvent } from "react";
 import { formatDateTime } from "../utils/utils";
+import { MAP_FOCUS_MARKER_EVENT } from "../constants/customEvents";
+import { EVENT_HIGHLIGHT_CLASSES } from "../constants/highlightClasses";
 /**
  * Connpass APIから返るイベント情報
  */
@@ -78,6 +80,98 @@ export function EventList({
   error,
   emptyMessage,
 }: EventListProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<EventListItem | null>(
+    null,
+  );
+  const dispatchFocusMarkerEvent = (eventId: number) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent(MAP_FOCUS_MARKER_EVENT, {
+        detail: { eventId },
+      }),
+    );
+  };
+
+  const highlightEventArticle = (eventId: number) => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const target = document.getElementById(`event-${eventId}`);
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    EVENT_HIGHLIGHT_CLASSES.forEach((cls) => target.classList.add(cls));
+
+    window.setTimeout(() => {
+      EVENT_HIGHLIGHT_CLASSES.forEach((cls) => target.classList.remove(cls));
+    }, 1800);
+  };
+
+  const shouldIgnoreArticleClick = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+    return Boolean(target.closest("a, button, input, textarea, select"));
+  };
+
+  const handleArticleClick = (
+    eventId: number,
+    domEvent: MouseEvent<HTMLElement>,
+  ) => {
+    if (shouldIgnoreArticleClick(domEvent.target)) {
+      return;
+    }
+
+    dispatchFocusMarkerEvent(eventId);
+    highlightEventArticle(eventId);
+  };
+
+  const handleViewAllClick = (event: EventListItem) => {
+    setSelectedEvent(event);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedEvent(null);
+  };
+
+  const renderValue = (value: unknown) => {
+    if (value === null || value === undefined) {
+      return "なし";
+    }
+    if (typeof value === "string") {
+      return value.split("\n").map((line, index, arr) => (
+        <span key={index}>
+          {line}
+          {index < arr.length - 1 && <br />}
+        </span>
+      ));
+    }
+
+    if (typeof value === "object") {
+      return (
+        <pre className="text-xs whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded">
+          {JSON.stringify(value, null, 2)
+            .split("\n")
+            .map((line, i, arr) => (
+              <span key={i}>
+                {line}
+                {i < arr.length - 1 && <br />}
+              </span>
+            ))}
+        </pre>
+      );
+    }
+    return String(value);
+  };
+
   if (isLoading) {
     return (
       <section className="w-full space-y-4">
@@ -133,7 +227,8 @@ export function EventList({
             id={`event-${event.id}`}
             tabIndex={-1}
             key={event.id}
-            className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow max-h-[30vh] overflow-hidden"
+            className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow max-h-[30vh] overflow-hidden cursor-pointer"
+            onClick={(domEvent) => handleArticleClick(event.id, domEvent)}
           >
             <div className="flex flex-col md:flex-row gap-4">
               {event.image_url ? (
@@ -186,7 +281,7 @@ export function EventList({
                   )}
                 </header>
 
-                <dl className="grid gap-4 md:grid-cols-2">
+                <dl className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)]">
                   <div>
                     <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                       日時
@@ -195,7 +290,7 @@ export function EventList({
                       {dateRangeDisplay}
                     </dd>
                   </div>
-                  <div>
+                  <div className="md:row-span-2">
                     <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                       会場
                     </dt>
@@ -214,21 +309,68 @@ export function EventList({
                       募集状況
                     </dt>
                     <dd className="text-sm text-gray-800 dark:text-gray-100">
-                      {event.accepted} / {event.limit ?? "上限なし"}
-                      {event.waiting ? `（補欠 ${event.waiting}）` : ""}
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <span>
+                          {event.event_type === "advertisement"
+                            ? "connpassから応募不可"
+                            : `${event.accepted} / ${
+                                event.limit ?? "上限なし"
+                              }${
+                                event.waiting ? `（補欠 ${event.waiting}）` : ""
+                              }`}
+                        </span>
+                        <button
+                          type="button"
+                          className="px-2 py-1 text-xs rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                          onClick={() => handleViewAllClick(event)}
+                        >
+                          詳細
+                        </button>
+                      </div>
                     </dd>
                   </div>
-                  {event.event_type === "advertisement" && (
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      connpass上からは応募不可
-                    </p>
-                  )}
                 </dl>
               </div>
             </div>
           </article>
         );
       })}
+      {isModalOpen && selectedEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={closeModal}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 space-y-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="flex items-center justify-between">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                イベント詳細
+              </h4>
+              <button
+                type="button"
+                className="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                onClick={closeModal}
+              >
+                閉じる
+              </button>
+            </header>
+            <dl className="space-y-3">
+              {Object.entries(selectedEvent).map(([key, value]) => (
+                <div key={key}>
+                  <dt className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    {key}
+                  </dt>
+                  <dd className="text-sm text-gray-900 dark:text-gray-100">
+                    {renderValue(value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

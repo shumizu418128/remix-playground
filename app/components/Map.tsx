@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { EventListItem } from "./EventList";
 import { formatDateTime } from "../utils/utils";
+import { MAP_FOCUS_MARKER_EVENT } from "../constants/customEvents";
+import { EVENT_HIGHLIGHT_CLASSES } from "../constants/highlightClasses";
 
 const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
@@ -8,6 +10,8 @@ const LEAFLET_SCRIPT_ID = "leaflet-script";
 const LEAFLET_STYLE_ID = "leaflet-style";
 
 let leafletPromise: Promise<any> | null = null;
+
+type MarkerLookup = globalThis.Map<number, any>;
 
 /**
  * Leaflet本体とスタイルシートを動的に読み込みます。
@@ -54,6 +58,23 @@ const ensureLeafletAssets = () => {
   return leafletPromise;
 };
 
+/**
+ * LeafletがDOM要素へ付与した内部IDを除去します。
+ *
+ * Args:
+ *   container: Leafletマップを描画するdiv要素。
+ */
+const resetLeafletContainer = (container: HTMLDivElement | null) => {
+  if (!container) {
+    return;
+  }
+
+  const stampedContainer = container as HTMLDivElement & { _leaflet_id?: string | number };
+  if (stampedContainer._leaflet_id) {
+    delete stampedContainer._leaflet_id;
+  }
+};
+
 export interface MapProps {
   /** マッピング対象のイベント配列 */
   events: EventListItem[];
@@ -74,6 +95,15 @@ export function Map({ events, isLoading = false }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
+  const markerMapRef = useRef<MarkerLookup>(new globalThis.Map<number, any>());
+
+  const destroyMapInstance = useCallback(() => {
+    mapRef.current?.remove();
+    mapRef.current = null;
+    markersLayerRef.current = null;
+    markerMapRef.current = new globalThis.Map<number, any>();
+    resetLeafletContainer(containerRef.current);
+  }, []);
 
   const geoEvents = useMemo(() => {
     return events.reduce<EventListItem[]>((acc, event) => {
@@ -98,9 +128,68 @@ export function Map({ events, isLoading = false }: MapProps) {
       return;
     }
 
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    const rect = target.getBoundingClientRect();
+    const absoluteTop = rect.top + window.scrollY;
+    const middleOffset = absoluteTop - window.innerHeight / 2 + rect.height / 2;
+
+    window.scrollTo({
+      top: Math.max(middleOffset, 0),
+      behavior: "smooth",
+    });
+
     target.focus({ preventScroll: true });
+
+    EVENT_HIGHLIGHT_CLASSES.forEach((cls) => target.classList.add(cls));
+
+    window.setTimeout(() => {
+      EVENT_HIGHLIGHT_CLASSES.forEach((cls) => target.classList.remove(cls));
+    }, 1800);
   };
+
+  const focusMarkerByEventId = useCallback(
+    (eventId: number) => {
+      if (!mapRef.current || !markerMapRef.current.has(eventId)) {
+        return;
+      }
+
+      const marker = markerMapRef.current.get(eventId);
+      if (!marker) {
+        return;
+      }
+
+      if (typeof marker.getLatLng === "function") {
+        const latLng = marker.getLatLng();
+        mapRef.current.setView(latLng, Math.max(mapRef.current.getZoom() ?? 5, 8), {
+          animate: true,
+        });
+      }
+
+      if (typeof marker.openPopup === "function") {
+        marker.openPopup();
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const handleFocusMarker = (event: Event) => {
+      if (!(event instanceof CustomEvent)) {
+        return;
+      }
+
+      const eventId = event.detail?.eventId;
+      if (typeof eventId !== "number") {
+        return;
+      }
+
+      focusMarkerByEventId(eventId);
+    };
+
+    window.addEventListener(MAP_FOCUS_MARKER_EVENT, handleFocusMarker as EventListener);
+    return () => {
+      window.removeEventListener(MAP_FOCUS_MARKER_EVENT, handleFocusMarker as EventListener);
+    };
+  }, [focusMarkerByEventId]);
 
   useEffect(() => {
     if (isLoading) {
@@ -120,7 +209,17 @@ export function Map({ events, isLoading = false }: MapProps) {
           return;
         }
 
+        const containerMismatch =
+          mapRef.current &&
+          typeof mapRef.current.getContainer === "function" &&
+          mapRef.current.getContainer() !== containerRef.current;
+
+        if (containerMismatch) {
+          destroyMapInstance();
+        }
+
         if (!mapRef.current) {
+          resetLeafletContainer(containerRef.current);
           mapRef.current = L.map(containerRef.current, {
             center: [geoEvents[0].lat, geoEvents[0].lon],
             zoom: 5,
@@ -142,18 +241,21 @@ export function Map({ events, isLoading = false }: MapProps) {
         }
 
         const markersLayer = L.layerGroup();
+        markerMapRef.current = new globalThis.Map<number, any>();
 
         const createPopupContent = (event: EventListItem) => {
           const container = document.createElement("div");
           container.className = "space-y-1";
 
-          const titleButton = document.createElement("button");
-          titleButton.type = "button";
-          titleButton.className =
+          const titleLink = document.createElement("a");
+          titleLink.className =
             "text-left text-blue-600 hover:underline font-semibold focus:outline-none";
-          titleButton.textContent = event.title;
-          titleButton.addEventListener("click", () => {
-            scrollToEventArticle(event.id);
+          titleLink.textContent = event.title;
+          titleLink.href = event.url;
+          titleLink.target = "_blank";
+          titleLink.rel = "noreferrer noopener";
+          titleLink.addEventListener("click", (clickEvent) => {
+            clickEvent.stopPropagation();
           });
 
           const start = formatDateTime(event.started_at);
@@ -181,15 +283,20 @@ export function Map({ events, isLoading = false }: MapProps) {
             dateText.textContent += " (connpass上からは応募不可)";
           }
 
-          container.appendChild(titleButton);
+          container.appendChild(titleLink);
           container.appendChild(dateText);
           return container;
         };
 
         geoEvents.forEach((event) => {
-          L.marker([event.lat, event.lon])
-            .bindPopup(createPopupContent(event))
-            .addTo(markersLayer);
+          const marker = L.marker([event.lat, event.lon]).bindPopup(createPopupContent(event));
+
+          marker.on("click", () => {
+            scrollToEventArticle(event.id);
+          });
+
+          marker.addTo(markersLayer);
+          markerMapRef.current.set(event.id, marker);
         });
 
         markersLayer.addTo(mapRef.current);
@@ -211,15 +318,19 @@ export function Map({ events, isLoading = false }: MapProps) {
     return () => {
       isMounted = false;
     };
-  }, [geoEvents, isLoading]);
+  }, [destroyMapInstance, geoEvents, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading && geoEvents.length === 0) {
+      destroyMapInstance();
+    }
+  }, [destroyMapInstance, geoEvents.length, isLoading]);
 
   useEffect(() => {
     return () => {
-      mapRef.current?.remove();
-      mapRef.current = null;
-      markersLayerRef.current = null;
+      destroyMapInstance();
     };
-  }, []);
+  }, [destroyMapInstance]);
 
   if (isLoading) {
     return (
