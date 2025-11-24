@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Form } from "react-router";
 
 /**
@@ -43,22 +43,58 @@ const PREFECTURES = [
  * @param props - コンポーネントのプロパティ
  * @returns イベント検索フォームのJSX要素
  */
-export function EventSearch() {
+export function EventSearch({ initialValues }: EventSearchProps) {
   /**
    * Dateオブジェクトを日付入力用フォーマット(YYYY-MM-DD)へ変換
    */
   const formatDate = (date: Date) => date.toISOString().split("T")[0];
 
-  const today = new Date();
-  const defaultEnd = new Date(today);
-  // 1ヶ月後を終了日とする
-  defaultEnd.setMonth(defaultEnd.getMonth() + 1);
+  const today = useMemo(() => new Date(), []);
+  const defaultEnd = useMemo(() => {
+    const end = new Date(today);
+    end.setMonth(end.getMonth() + 1);
+    return end;
+  }, [today]);
+  const defaultStartDate = useMemo(() => formatDate(today), [today]);
+  const defaultEndDate = useMemo(() => formatDate(defaultEnd), [defaultEnd]);
 
-  const [keyword, setKeyword] = useState("");
-  const [startDate, setStartDate] = useState(formatDate(today));
-  const [endDate, setEndDate] = useState(formatDate(defaultEnd));
-  const [selectedPrefectures, setSelectedPrefectures] =
-    useState<string[]>(["tokyo"]);
+  const [keyword, setKeyword] = useState(initialValues?.keyword ?? "");
+  const [startDate, setStartDate] = useState(
+    initialValues?.startDate ?? defaultStartDate
+  );
+  const [endDate, setEndDate] = useState(
+    initialValues?.endDate ?? defaultEndDate
+  );
+  const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>(
+    initialValues?.prefectures && initialValues.prefectures.length > 0
+      ? initialValues.prefectures
+      : ["tokyo"]
+  );
+
+  const prefecturesKey = useMemo(
+    () => JSON.stringify(initialValues?.prefectures ?? ["tokyo"]),
+    [initialValues?.prefectures]
+  );
+
+  useEffect(() => {
+    setKeyword(initialValues?.keyword ?? "");
+  }, [initialValues?.keyword]);
+
+  useEffect(() => {
+    setStartDate(initialValues?.startDate ?? defaultStartDate);
+  }, [initialValues?.startDate, defaultStartDate]);
+
+  useEffect(() => {
+    setEndDate(initialValues?.endDate ?? defaultEndDate);
+  }, [initialValues?.endDate, defaultEndDate]);
+
+  useEffect(() => {
+    setSelectedPrefectures(
+      initialValues?.prefectures && initialValues.prefectures.length > 0
+        ? initialValues.prefectures
+        : ["tokyo"]
+    );
+  }, [prefecturesKey]);
 
   /**
    * 都道府県のチェックボックスの変更を処理

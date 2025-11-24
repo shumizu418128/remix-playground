@@ -3,6 +3,7 @@ import type { Route } from "./+types/home";
 import { EventList } from "../components/EventList";
 import type { EventListItem } from "../components/EventList";
 import { EventSearch } from "../components/EventSearch";
+import type { EventSearchFormData } from "../components/EventSearch";
 import { Map } from "../components/Map";
 import { getServerEnv } from "../utils/utils";
 
@@ -15,6 +16,7 @@ export function meta({}: Route.MetaArgs) {
 
 type ActionResponse = {
   events: EventListItem[];
+  formValues: EventSearchFormData;
   errorMessage?: string;
 };
 
@@ -96,6 +98,15 @@ export async function action({ request }: Route.ActionArgs) {
   const keywordInput = typeof rawKeyword === "string" ? rawKeyword : "";
   const { includeKeywords, excludeKeywords } = parseKeywordInput(keywordInput);
   const prefectures = formData.getAll("prefectures") as string[];
+  const formValues: EventSearchFormData = {
+    keyword: keywordInput,
+    startDate: startDateValue ?? "",
+    endDate: endDateValue ?? "",
+    prefectures:
+      prefectures.length > 0
+        ? prefectures
+        : (["tokyo"] as EventSearchFormData["prefectures"]),
+  };
 
   // 開始日から終了日までの日付を配列に入れる
   const dates: string[] = [];
@@ -180,12 +191,13 @@ export async function action({ request }: Route.ActionArgs) {
       return new Date(a.started_at).getTime() - new Date(b.started_at).getTime();
     });
 
-    const payload: ActionResponse = { events: filteredEvents };
+    const payload: ActionResponse = { events: filteredEvents, formValues };
     return Response.json(payload);
   } catch (error) {
     console.error(error);
     const payload: ActionResponse = {
       events: [],
+      formValues,
       errorMessage: "Connpass APIの取得に失敗しました。しばらく待って再度お試しください。",
     };
     return Response.json(payload, { status: 502 });
@@ -196,6 +208,7 @@ export default function Home() {
   const actionData = useActionData<ActionResponse>();
   const navigation = useNavigation();
   const events = actionData?.events ?? [];
+  const formValues = actionData?.formValues;
   const errorMessage = actionData?.errorMessage;
   const isSubmitting = navigation.state === "submitting";
   const shouldShowList = isSubmitting || Boolean(actionData);
@@ -205,13 +218,13 @@ export default function Home() {
       <div className="w-full space-y-8">
         {!shouldShowList && (
           <div className="max-w-lg mx-auto">
-            <EventSearch />
+            <EventSearch initialValues={formValues} />
           </div>
         )}
         {shouldShowList && (
           <div className="grid gap-8 items-start lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
             <div className="sticky top-6 space-y-4 self-start">
-              <EventSearch />
+              <EventSearch initialValues={formValues} />
               <Map events={events} isLoading={isSubmitting} />
             </div>
             <EventList
