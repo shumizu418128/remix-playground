@@ -44,9 +44,18 @@ const PREFECTURES = [
  * @returns イベント検索フォームのJSX要素
  */
 export function EventSearch() {
+  /**
+   * Dateオブジェクトを日付入力用フォーマット(YYYY-MM-DD)へ変換
+   */
+  const formatDate = (date: Date) => date.toISOString().split("T")[0];
+
+  const today = new Date();
+  const sixMonthsLater = new Date(today);
+  sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+
   const [keyword, setKeyword] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(formatDate(today));
+  const [endDate, setEndDate] = useState(formatDate(sixMonthsLater));
   const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>([]);
 
   /**
