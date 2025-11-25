@@ -204,6 +204,9 @@ export function EventList({
 
   return (
     <section className="space-y-4">
+      <header className="text-sm text-gray-500 dark:text-gray-400">
+        全 {events.length} 件のイベント
+      </header>
       {events.map((event) => {
         const start = formatDateTime(event.started_at);
         const end = formatDateTime(event.ended_at);
