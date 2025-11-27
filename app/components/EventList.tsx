@@ -230,12 +230,12 @@ export function EventList({
             id={`event-${event.id}`}
             tabIndex={-1}
             key={event.id}
-            className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow max-h-[30vh] overflow-hidden cursor-pointer"
+            className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow h-[270px] overflow-hidden cursor-pointer"
             onClick={(domEvent) => handleArticleClick(event.id, domEvent)}
           >
             <div className="flex flex-col md:flex-row gap-4">
               {event.image_url ? (
-                <figure className="md:w-1/4 max-h-[30vh] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <figure className="md:w-1/4 h-[270px] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                   <a
                     href={event.url}
                     target="_blank"
@@ -250,7 +250,7 @@ export function EventList({
                   </a>
                 </figure>
               ) : (
-                <figure className="md:w-1/4 max-h-[30vh] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center" />
+                <figure className="md:w-1/4 h-[270px] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center" />
               )}
               <div className="flex-1 space-y-4">
                 <header className="space-y-1">
