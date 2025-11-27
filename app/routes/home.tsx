@@ -11,6 +11,9 @@ export function meta({}: Route.MetaArgs) {
   return [
     { title: "イベント検索" },
     { name: "description", content: "イベントを検索できます" },
+    // Googleなどの検索エンジンにインデックスさせない
+    { name: "robots", content: "noindex, nofollow" },
+    { name: "googlebot", content: "noindex, nofollow" },
   ];
 }
 
