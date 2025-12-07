@@ -63,6 +63,8 @@ export interface EventListProps {
   error?: ReactNode;
   /** イベントが存在しないときの代替メッセージ */
   emptyMessage?: ReactNode;
+  /** 検索結果がさらに存在する可能性があるかどうか */
+  hasMoreResults?: boolean;
 }
 
 /**
@@ -79,6 +81,7 @@ export function EventList({
   isLoading = false,
   error,
   emptyMessage,
+  hasMoreResults = false,
 }: EventListProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventListItem | null>(
@@ -204,8 +207,15 @@ export function EventList({
 
   return (
     <section className="space-y-4">
-      <header className="text-sm text-gray-500 dark:text-gray-400">
-        全 {events.length} 件のイベント
+      <header className="space-y-3">
+        <div className="text-2xl text-gray-500 dark:text-gray-400">
+          全 {events.length} 件のイベント
+        </div>
+        {hasMoreResults && (
+          <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-200 text-2xl">
+            ⚠️ 検索結果が100件を超えている可能性があります
+          </div>
+        )}
       </header>
       {events.map((event) => {
         const start = formatDateTime(event.started_at);
