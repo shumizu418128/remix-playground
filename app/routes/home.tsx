@@ -166,7 +166,7 @@ export async function action({ request }: Route.ActionArgs) {
       const passesBaseConditions =
         event.open_status === "preopen" &&
         event.place &&
-        !/オンライン|online|abema/i.test(event.place) &&
+        !/オンライン|online|abema|youtube|zoom|discord|teams/i.test(event.place) &&
         (!event.limit || event.limit > 10) &&
         !/(もくもく|coderdojo|永田町|ハッカソン)/i.test(event.title ?? "");
 
