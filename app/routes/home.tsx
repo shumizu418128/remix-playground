@@ -168,7 +168,8 @@ export async function action({ request }: Route.ActionArgs) {
         event.place &&
         !/オンライン|online|abema|youtube|zoom|discord|teams/i.test(event.place) &&
         (!event.limit || event.limit > 10) &&
-        !/(もくもく|coderdojo|永田町|ハッカソン)/i.test(event.title ?? "");
+        !/(もくもく|coderdojo|永田町|ハッカソン)/i.test(event.title ?? "") &&
+        (event.accepted > 0 || event.event_type === "advertisement");
 
       if (!passesBaseConditions) {
         return false;
