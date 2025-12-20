@@ -22,6 +22,7 @@ type ActionResponse = {
   formValues: EventSearchFormData;
   errorMessage?: string;
   hasMoreResults?: boolean;
+  actualLength?: number;
 };
 
 /**
@@ -156,8 +157,8 @@ export async function action({ request }: Route.ActionArgs) {
     }
     const result = (await response.json()) as { events?: EventListItem[] };
     const events = result.events ?? [];
-    const length = events.length;
-    const hasMoreResults = length >= maxCount;
+    const actualLength = events.length;
+    const hasMoreResults = actualLength >= maxCount;
 
     // レスポンスのフィルター
     const normalizedIncludes = includeKeywords.map((kw) => kw.toLowerCase());
@@ -200,7 +201,7 @@ export async function action({ request }: Route.ActionArgs) {
       return new Date(a.started_at).getTime() - new Date(b.started_at).getTime();
     });
 
-    const payload: ActionResponse = { events: filteredEvents, formValues, hasMoreResults };
+    const payload: ActionResponse = { events: filteredEvents, formValues, hasMoreResults, actualLength };
     return Response.json(payload);
   } catch (error) {
     console.error(error);
@@ -242,6 +243,7 @@ export default function Home() {
               error={errorMessage}
               emptyMessage="条件に一致するイベントが見つかりませんでした。"
               hasMoreResults={actionData?.hasMoreResults}
+              actualLength={actionData?.actualLength}
             />
           </div>
         )}
