@@ -52,7 +52,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
   const today = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => {
     const end = new Date(today);
-    end.setMonth(end.getMonth() + 1);
+    end.setDate(end.getDate() + 7);
     return end;
   }, [today]);
   const defaultStartDate = useMemo(() => formatDate(today), [today]);
