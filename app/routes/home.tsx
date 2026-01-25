@@ -4,7 +4,7 @@ import { EventList } from "../components/EventList";
 import type { EventListItem } from "../components/EventList";
 import { EventSearch } from "../components/EventSearch";
 import type { EventSearchFormData } from "../components/EventSearch";
-import { Map } from "../components/Map";
+import { EventMap } from "../components/EventMap";
 import { getServerEnv } from "../utils/utils";
 
 export function meta({}: Route.MetaArgs) {
@@ -235,7 +235,7 @@ export default function Home() {
           <div className="grid gap-8 items-start lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
             <div className="sticky top-6 space-y-4 self-start">
               <EventSearch initialValues={formValues} />
-              <Map events={events} isLoading={isSubmitting} />
+              <EventMap events={events} isLoading={isSubmitting} />
             </div>
             <EventList
               events={events}

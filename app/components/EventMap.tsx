@@ -91,17 +91,17 @@ export interface MapProps {
  * Returns:
  *   イベントが存在する場合はLeafletマップ、存在しない場合は案内文。
  */
-export function Map({ events, isLoading = false }: MapProps) {
+export function EventMap({ events, isLoading = false }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
-  const markerMapRef = useRef<MarkerLookup>(new globalThis.Map<number, any>());
+  const markerEventMapRef = useRef<MarkerLookup>(new globalThis.Map<number, any>());
 
-  const destroyMapInstance = useCallback(() => {
+  const destroyEventMapInstance = useCallback(() => {
     mapRef.current?.remove();
     mapRef.current = null;
     markersLayerRef.current = null;
-    markerMapRef.current = new globalThis.Map<number, any>();
+    markerEventMapRef.current = new globalThis.Map<number, any>();
     resetLeafletContainer(containerRef.current);
   }, []);
 
@@ -148,11 +148,11 @@ export function Map({ events, isLoading = false }: MapProps) {
 
   const focusMarkerByEventId = useCallback(
     (eventId: number) => {
-      if (!mapRef.current || !markerMapRef.current.has(eventId)) {
+      if (!mapRef.current || !markerEventMapRef.current.has(eventId)) {
         return;
       }
 
-      const marker = markerMapRef.current.get(eventId);
+      const marker = markerEventMapRef.current.get(eventId);
       if (!marker) {
         return;
       }
@@ -202,7 +202,7 @@ export function Map({ events, isLoading = false }: MapProps) {
 
     let isMounted = true;
 
-    const renderMap = async () => {
+    const renderEventMap = async () => {
       try {
         const L = await ensureLeafletAssets();
         if (!isMounted || !containerRef.current) {
@@ -215,7 +215,7 @@ export function Map({ events, isLoading = false }: MapProps) {
           mapRef.current.getContainer() !== containerRef.current;
 
         if (containerMismatch) {
-          destroyMapInstance();
+          destroyEventMapInstance();
         }
 
         if (!mapRef.current) {
@@ -241,7 +241,7 @@ export function Map({ events, isLoading = false }: MapProps) {
         }
 
         const markersLayer = L.layerGroup();
-        markerMapRef.current = new globalThis.Map<number, any>();
+        markerEventMapRef.current = new globalThis.Map<number, any>();
 
         const createPopupContent = (event: EventListItem) => {
           const container = document.createElement("div");
@@ -296,7 +296,7 @@ export function Map({ events, isLoading = false }: MapProps) {
           });
 
           marker.addTo(markersLayer);
-          markerMapRef.current.set(event.id, marker);
+          markerEventMapRef.current.set(event.id, marker);
         });
 
         markersLayer.addTo(mapRef.current);
@@ -313,24 +313,24 @@ export function Map({ events, isLoading = false }: MapProps) {
       }
     };
 
-    renderMap();
+    renderEventMap();
 
     return () => {
       isMounted = false;
     };
-  }, [destroyMapInstance, geoEvents, isLoading]);
+  }, [destroyEventMapInstance, geoEvents, isLoading]);
 
   useEffect(() => {
     if (!isLoading && geoEvents.length === 0) {
-      destroyMapInstance();
+      destroyEventMapInstance();
     }
-  }, [destroyMapInstance, geoEvents.length, isLoading]);
+  }, [destroyEventMapInstance, geoEvents.length, isLoading]);
 
   useEffect(() => {
     return () => {
-      destroyMapInstance();
+      destroyEventMapInstance();
     };
-  }, [destroyMapInstance]);
+  }, [destroyEventMapInstance]);
 
   if (isLoading) {
     return (
