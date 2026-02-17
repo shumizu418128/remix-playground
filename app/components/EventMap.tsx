@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EventListItem } from "./EventList";
 import { formatDateTime } from "../utils/utils";
 import { MAP_FOCUS_MARKER_EVENT } from "../constants/customEvents";
@@ -93,9 +93,12 @@ export interface MapProps {
  */
 export function EventMap({ events, isLoading = false }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const fullScreenContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
   const markerEventMapRef = useRef<MarkerLookup>(new globalThis.Map<number, any>());
+  const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
+  const prevLoadingRef = useRef(false);
 
   const destroyEventMapInstance = useCallback(() => {
     mapRef.current?.remove();
@@ -193,11 +196,17 @@ export function EventMap({ events, isLoading = false }: MapProps) {
 
   useEffect(() => {
     if (isLoading) {
-      return;
+      return () => {
+        prevLoadingRef.current = true;
+      };
     }
 
-    if (!containerRef.current || !geoEvents.length) {
-      return;
+    const justFinishedLoading = prevLoadingRef.current;
+    const activeContainer = isFullScreenOpen ? fullScreenContainerRef.current : containerRef.current;
+    if (!activeContainer || !geoEvents.length) {
+      return () => {
+        prevLoadingRef.current = isLoading;
+      };
     }
 
     let isMounted = true;
@@ -205,22 +214,24 @@ export function EventMap({ events, isLoading = false }: MapProps) {
     const renderEventMap = async () => {
       try {
         const L = await ensureLeafletAssets();
-        if (!isMounted || !containerRef.current) {
+        const currentContainer = isFullScreenOpen ? fullScreenContainerRef.current : containerRef.current;
+        if (!isMounted || !currentContainer) {
           return;
         }
 
         const containerMismatch =
           mapRef.current &&
           typeof mapRef.current.getContainer === "function" &&
-          mapRef.current.getContainer() !== containerRef.current;
+          mapRef.current.getContainer() !== currentContainer;
 
-        if (containerMismatch) {
+        const forceRecreate = justFinishedLoading && mapRef.current;
+        if (containerMismatch || forceRecreate) {
           destroyEventMapInstance();
         }
 
         if (!mapRef.current) {
-          resetLeafletContainer(containerRef.current);
-          mapRef.current = L.map(containerRef.current, {
+          resetLeafletContainer(currentContainer);
+          mapRef.current = L.map(currentContainer, {
             center: [geoEvents[0].lat, geoEvents[0].lon],
             zoom: 5,
             zoomControl: true,
@@ -231,13 +242,30 @@ export function EventMap({ events, isLoading = false }: MapProps) {
             maxZoom: 18,
           }).addTo(mapRef.current);
 
-          requestAnimationFrame(() => {
-            mapRef.current?.invalidateSize();
-          });
+          // 検索2回目以降はコンテナが再マウント直後でサイズが0のことがあるため、
+          // レイアウト完了後に invalidateSize を複数回呼ぶ
+          const scheduleInvalidateSize = () => {
+            requestAnimationFrame(() => {
+              mapRef.current?.invalidateSize();
+            });
+            setTimeout(() => {
+              if (isMounted && mapRef.current) {
+                mapRef.current.invalidateSize();
+              }
+            }, 100);
+          };
+          scheduleInvalidateSize();
         }
 
         if (markersLayerRef.current) {
           markersLayerRef.current.remove();
+        }
+
+        // 既存マップでマーカーだけ更新する場合も、タイルが正しく描画されるようサイズを再計算
+        if (mapRef.current) {
+          requestAnimationFrame(() => {
+            mapRef.current?.invalidateSize();
+          });
         }
 
         const markersLayer = L.layerGroup();
@@ -317,8 +345,9 @@ export function EventMap({ events, isLoading = false }: MapProps) {
 
     return () => {
       isMounted = false;
+      prevLoadingRef.current = isLoading;
     };
-  }, [destroyEventMapInstance, geoEvents, isLoading]);
+  }, [destroyEventMapInstance, geoEvents, isLoading, isFullScreenOpen]);
 
   useEffect(() => {
     if (!isLoading && geoEvents.length === 0) {
@@ -352,10 +381,43 @@ export function EventMap({ events, isLoading = false }: MapProps) {
 
   return (
     <section className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">マップ表示</h2>
+        <button
+          type="button"
+          onClick={() => setIsFullScreenOpen(true)}
+          className="shrink-0 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          全画面表示
+        </button>
+      </div>
       <div
         ref={containerRef}
-        className="w-full h-[45vh] min-h-[280px] max-h-[520px] rounded-lg shadow bg-gray-200 dark:bg-gray-700 overflow-hidden"
-      />
+        className={`w-full h-[45vh] min-h-[280px] max-h-[520px] rounded-lg shadow bg-gray-200 dark:bg-gray-700 overflow-hidden ${isFullScreenOpen ? "flex items-center justify-center" : ""}`}
+      >
+        {isFullScreenOpen && (
+          <p className="text-sm text-gray-600 dark:text-gray-400">マップは全画面で表示中です</p>
+        )}
+      </div>
+      {isFullScreenOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="マップ全画面表示"
+          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40"
+          onClick={() => setIsFullScreenOpen(false)}
+        >
+          <div
+            className="relative w-full h-full max-w-[90vw] max-h-[90vh] rounded-lg shadow-xl overflow-hidden bg-gray-200 dark:bg-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              ref={fullScreenContainerRef}
+              className="absolute inset-0 w-full h-full"
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 }
