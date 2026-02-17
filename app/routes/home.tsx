@@ -214,14 +214,39 @@ export async function action({ request }: Route.ActionArgs) {
   }
 }
 
+/**
+ * FormData から EventSearchFormData を組み立てます。
+ * 検索送信中（actionData がまだ無いとき）にユーザー入力値を表示するために使用します。
+ */
+const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
+  const keyword = (formData.get("keyword") as string | null) ?? "";
+  const startDate = (formData.get("startDate") as string | null) ?? "";
+  const endDate = (formData.get("endDate") as string | null) ?? "";
+  const prefectures = formData.getAll("prefectures") as string[];
+  return {
+    keyword,
+    startDate,
+    endDate,
+    prefectures:
+      prefectures.length > 0
+        ? prefectures
+        : (["tokyo"] as EventSearchFormData["prefectures"]),
+  };
+};
+
 export default function Home() {
   const actionData = useActionData<ActionResponse>();
   const navigation = useNavigation();
   const events = actionData?.events ?? [];
-  const formValues = actionData?.formValues;
   const errorMessage = actionData?.errorMessage;
   const isSubmitting = navigation.state === "submitting";
   const shouldShowList = isSubmitting || Boolean(actionData);
+
+  /** 検索中は送信したフォームの値、完了後は action の返却値を使用する */
+  const formValues: EventSearchFormData | undefined =
+    isSubmitting && navigation.formData
+      ? formValuesFromFormData(navigation.formData)
+      : actionData?.formValues;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
