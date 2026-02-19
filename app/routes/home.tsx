@@ -91,6 +91,7 @@ export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const startDateValue = formData.get("startDate") as string | null;
   const endDateValue = formData.get("endDate") as string | null;
+  const excludeThursdayValue = formData.get("excludeThursday") as string | null;
   const startDate =
     startDateValue && !Number.isNaN(Date.parse(startDateValue))
       ? new Date(startDateValue)
@@ -103,6 +104,7 @@ export async function action({ request }: Route.ActionArgs) {
   const keywordInput = typeof rawKeyword === "string" ? rawKeyword : "";
   const { includeKeywords, excludeKeywords } = parseKeywordInput(keywordInput);
   const prefectures = formData.getAll("prefectures") as string[];
+  const excludeThursday = excludeThursdayValue === "true";
   const formValues: EventSearchFormData = {
     keyword: keywordInput,
     startDate: startDateValue ?? "",
@@ -111,6 +113,7 @@ export async function action({ request }: Route.ActionArgs) {
       prefectures.length > 0
         ? prefectures
         : (["tokyo"] as EventSearchFormData["prefectures"]),
+    excludeThursday,
   };
 
   // 開始日から終了日までの日付を配列に入れる
@@ -118,7 +121,9 @@ export async function action({ request }: Route.ActionArgs) {
   if (startDate && endDate) {
     const cursor = new Date(startDate);
     while (cursor <= endDate) {
-      dates.push(cursor.toISOString().split("T")[0].replace(/-/g, ""));
+      if (!(excludeThursday && cursor.getDay() === 4)) {
+        dates.push(cursor.toISOString().split("T")[0].replace(/-/g, ""));
+      }
       cursor.setDate(cursor.getDate() + 1);
     }
   }
@@ -223,6 +228,9 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
   const startDate = (formData.get("startDate") as string | null) ?? "";
   const endDate = (formData.get("endDate") as string | null) ?? "";
   const prefectures = formData.getAll("prefectures") as string[];
+  const excludeThursdayValue =
+    (formData.get("excludeThursday") as string | null) ?? "false";
+  const excludeThursday = excludeThursdayValue === "true";
   return {
     keyword,
     startDate,
@@ -231,6 +239,7 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
       prefectures.length > 0
         ? prefectures
         : (["tokyo"] as EventSearchFormData["prefectures"]),
+    excludeThursday,
   };
 };
 

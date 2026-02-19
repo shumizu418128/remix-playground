@@ -13,6 +13,8 @@ export interface EventSearchFormData {
   endDate: string;
   /** 選択された都道府県の配列 */
   prefectures: string[];
+  /** 木曜日を検索対象から除外するかどうか */
+  excludeThursday: boolean;
 }
 
 /**
@@ -70,6 +72,9 @@ export function EventSearch({ initialValues }: EventSearchProps) {
       ? initialValues.prefectures
       : ["tokyo"]
   );
+  const [excludeThursday, setExcludeThursday] = useState(
+    initialValues?.excludeThursday ?? true
+  );
 
   const prefecturesKey = useMemo(
     () => JSON.stringify(initialValues?.prefectures ?? ["tokyo"]),
@@ -95,6 +100,10 @@ export function EventSearch({ initialValues }: EventSearchProps) {
         : ["tokyo"]
     );
   }, [prefecturesKey]);
+
+  useEffect(() => {
+    setExcludeThursday(initialValues?.excludeThursday ?? true);
+  }, [initialValues?.excludeThursday]);
 
   /**
    * 都道府県のチェックボックスの変更を処理
@@ -142,15 +151,38 @@ export function EventSearch({ initialValues }: EventSearchProps) {
           >
             キーワード
           </label>
-          <input
-            type="text"
-            id="keyword"
-            name="keyword"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="イベント名やキーワードを入力"
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-          />
+          <div className="flex gap-3 items-center">
+            <div className="w-1/2">
+              <input
+                type="text"
+                id="keyword"
+                name="keyword"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div className="w-1/2">
+              <label
+                className="flex items-center justify-center space-x-2 cursor-pointer p-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={excludeThursday}
+                  onChange={(e) => setExcludeThursday(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  木曜を除く
+                </span>
+              </label>
+            </div>
+            <input
+              type="hidden"
+              name="excludeThursday"
+              value={excludeThursday ? "true" : "false"}
+            />
+          </div>
         </div>
 
         {/* 日付範囲入力 */}
