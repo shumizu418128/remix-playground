@@ -2,6 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Form } from "react-router";
 
 /**
+ * 開催日の絞り込み（キーワード横のドロップダウン）
+ */
+export type DayFilterOption =
+  | "all"
+  | "excludeThursday"
+  | "weekendsAndHolidaysOnly";
+
+/**
  * イベント検索フォームの入力値の型定義
  */
 export interface EventSearchFormData {
@@ -13,10 +21,8 @@ export interface EventSearchFormData {
   endDate: string;
   /** 選択された都道府県の配列 */
   prefectures: string[];
-  /** 木曜日を検索対象から除外するかどうか */
-  excludeThursday: boolean;
-  /** 土曜・日曜・国民の祝日のみ検索対象にするかどうか */
-  weekendsAndHolidaysOnly: boolean;
+  /** 開催日の絞り込み（すべての日／木曜を除く／土日祝のみ） */
+  dayFilter: DayFilterOption;
 }
 
 /**
@@ -74,11 +80,8 @@ export function EventSearch({ initialValues }: EventSearchProps) {
       ? initialValues.prefectures
       : ["tokyo"]
   );
-  const [excludeThursday, setExcludeThursday] = useState(
-    initialValues?.excludeThursday ?? true
-  );
-  const [weekendsAndHolidaysOnly, setWeekendsAndHolidaysOnly] = useState(
-    initialValues?.weekendsAndHolidaysOnly ?? false
+  const [dayFilter, setDayFilter] = useState<DayFilterOption>(
+    initialValues?.dayFilter ?? "excludeThursday"
   );
 
   const prefecturesKey = useMemo(
@@ -107,14 +110,8 @@ export function EventSearch({ initialValues }: EventSearchProps) {
   }, [prefecturesKey]);
 
   useEffect(() => {
-    setExcludeThursday(initialValues?.excludeThursday ?? true);
-  }, [initialValues?.excludeThursday]);
-
-  useEffect(() => {
-    setWeekendsAndHolidaysOnly(
-      initialValues?.weekendsAndHolidaysOnly ?? false
-    );
-  }, [initialValues?.weekendsAndHolidaysOnly]);
+    setDayFilter(initialValues?.dayFilter ?? "excludeThursday");
+  }, [initialValues?.dayFilter]);
 
   /**
    * 都道府県のチェックボックスの変更を処理
@@ -154,59 +151,44 @@ export function EventSearch({ initialValues }: EventSearchProps) {
         イベント検索
       </h2>
       <Form method="post" className="space-y-4">
-        {/* キーワード入力 */}
-        <div>
-          <label
-            htmlFor="keyword"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-          >
-            キーワード
-          </label>
-          <div className="flex gap-3 items-stretch">
-            <div className="flex min-w-0 flex-1 basis-0">
-              <input
-                type="text"
-                id="keyword"
-                name="keyword"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                className="w-full min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-            <label className="flex min-w-0 flex-1 basis-0 cursor-pointer items-center justify-center gap-2 border border-gray-300 p-2 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <input
-                type="checkbox"
-                checked={excludeThursday}
-                onChange={(e) => setExcludeThursday(e.target.checked)}
-                className="h-4 w-4 shrink-0 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                木曜を除く
-              </span>
-            </label>
-            <label className="flex min-w-0 flex-1 basis-0 cursor-pointer items-center justify-center gap-2 border border-gray-300 p-2 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <input
-                type="checkbox"
-                checked={weekendsAndHolidaysOnly}
-                onChange={(e) =>
-                  setWeekendsAndHolidaysOnly(e.target.checked)
-                }
-                className="h-4 w-4 shrink-0 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                土日祝のみ
-              </span>
+        {/* キーワード + 開催日の絞り込み（1:1） */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="min-w-0">
+            <label
+              htmlFor="keyword"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              キーワード
             </label>
             <input
-              type="hidden"
-              name="excludeThursday"
-              value={excludeThursday ? "true" : "false"}
+              type="text"
+              id="keyword"
+              name="keyword"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              className="w-full min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             />
-            <input
-              type="hidden"
-              name="weekendsAndHolidaysOnly"
-              value={weekendsAndHolidaysOnly ? "true" : "false"}
-            />
+          </div>
+          <div className="min-w-0">
+            <label
+              htmlFor="dayFilter"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              開催日の絞り込み
+            </label>
+            <select
+              id="dayFilter"
+              name="dayFilter"
+              value={dayFilter}
+              onChange={(e) =>
+                setDayFilter(e.target.value as DayFilterOption)
+              }
+              className="w-full min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:text-white"
+            >
+              <option value="all">すべての日</option>
+              <option value="excludeThursday">木曜を除く</option>
+              <option value="weekendsAndHolidaysOnly">土日祝のみ</option>
+            </select>
           </div>
         </div>
 

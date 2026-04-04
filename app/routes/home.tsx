@@ -4,7 +4,10 @@ import type { Route } from "./+types/home";
 import { EventList } from "../components/EventList";
 import type { EventListItem } from "../components/EventList";
 import { EventSearch } from "../components/EventSearch";
-import type { EventSearchFormData } from "../components/EventSearch";
+import type {
+  DayFilterOption,
+  EventSearchFormData,
+} from "../components/EventSearch";
 import { EventMap } from "../components/EventMap";
 import { getServerEnv } from "../utils/utils";
 
@@ -88,6 +91,47 @@ const parseKeywordInput = (input: string | null) => {
  * @param value - HTMLを含む可能性のある文字列
  * @returns タグ除去後の文字列
  */
+/** フォームの dayFilter として許容する値 */
+const DAY_FILTER_VALUES: readonly DayFilterOption[] = [
+  "all",
+  "excludeThursday",
+  "weekendsAndHolidaysOnly",
+] as const;
+
+/**
+ * フォーム値を DayFilterOption に正規化します。
+ *
+ * @param value - dayFilter フィールドの生の値
+ * @returns 解釈した開催日の絞り込み
+ */
+const parseDayFilter = (value: string | null): DayFilterOption => {
+  if (value && DAY_FILTER_VALUES.includes(value as DayFilterOption)) {
+    return value as DayFilterOption;
+  }
+  return "excludeThursday";
+};
+
+/**
+ * 開催日の絞り込みを、日付判定用の2フラグに変換します。
+ *
+ * @param dayFilter - 開催日の絞り込み
+ * @returns Connpass 検索用のフラグ
+ */
+const dayFilterToBooleans = (
+  dayFilter: DayFilterOption
+): { excludeThursday: boolean; weekendsAndHolidaysOnly: boolean } => {
+  switch (dayFilter) {
+    case "all":
+      return { excludeThursday: false, weekendsAndHolidaysOnly: false };
+    case "excludeThursday":
+      return { excludeThursday: true, weekendsAndHolidaysOnly: false };
+    case "weekendsAndHolidaysOnly":
+      return { excludeThursday: false, weekendsAndHolidaysOnly: true };
+    default:
+      return { excludeThursday: true, weekendsAndHolidaysOnly: false };
+  }
+};
+
 const stripHtmlTags = (value?: string) => {
   if (!value) {
     return "";
@@ -118,10 +162,11 @@ export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const startDateValue = formData.get("startDate") as string | null;
   const endDateValue = formData.get("endDate") as string | null;
-  const excludeThursdayValue = formData.get("excludeThursday") as string | null;
-  const weekendsAndHolidaysOnlyValue = formData.get(
-    "weekendsAndHolidaysOnly"
-  ) as string | null;
+  const dayFilter = parseDayFilter(
+    formData.get("dayFilter") as string | null
+  );
+  const { excludeThursday, weekendsAndHolidaysOnly } =
+    dayFilterToBooleans(dayFilter);
   const startDate =
     startDateValue && !Number.isNaN(Date.parse(startDateValue))
       ? new Date(startDateValue)
@@ -134,8 +179,6 @@ export async function action({ request }: Route.ActionArgs) {
   const keywordInput = typeof rawKeyword === "string" ? rawKeyword : "";
   const { includeKeywords, excludeKeywords } = parseKeywordInput(keywordInput);
   const prefectures = formData.getAll("prefectures") as string[];
-  const excludeThursday = excludeThursdayValue === "true";
-  const weekendsAndHolidaysOnly = weekendsAndHolidaysOnlyValue === "true";
   const formValues: EventSearchFormData = {
     keyword: keywordInput,
     startDate: startDateValue ?? "",
@@ -144,8 +187,7 @@ export async function action({ request }: Route.ActionArgs) {
       prefectures.length > 0
         ? prefectures
         : (["tokyo"] as EventSearchFormData["prefectures"]),
-    excludeThursday,
-    weekendsAndHolidaysOnly,
+    dayFilter,
   };
 
   // 開始日から終了日までの日付を配列に入れる
@@ -266,12 +308,9 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
   const startDate = (formData.get("startDate") as string | null) ?? "";
   const endDate = (formData.get("endDate") as string | null) ?? "";
   const prefectures = formData.getAll("prefectures") as string[];
-  const excludeThursdayValue =
-    (formData.get("excludeThursday") as string | null) ?? "false";
-  const excludeThursday = excludeThursdayValue === "true";
-  const weekendsAndHolidaysOnlyValue =
-    (formData.get("weekendsAndHolidaysOnly") as string | null) ?? "false";
-  const weekendsAndHolidaysOnly = weekendsAndHolidaysOnlyValue === "true";
+  const dayFilter = parseDayFilter(
+    (formData.get("dayFilter") as string | null) ?? "excludeThursday"
+  );
   return {
     keyword,
     startDate,
@@ -280,8 +319,7 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
       prefectures.length > 0
         ? prefectures
         : (["tokyo"] as EventSearchFormData["prefectures"]),
-    excludeThursday,
-    weekendsAndHolidaysOnly,
+    dayFilter,
   };
 };
 
