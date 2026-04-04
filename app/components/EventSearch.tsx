@@ -7,7 +7,8 @@ import { Form } from "react-router";
 export type DayFilterOption =
   | "all"
   | "excludeThursday"
-  | "weekendsAndHolidaysOnly";
+  | "weekendsAndHolidaysOnly"
+  | "fridayOnly";
 
 /**
  * イベント検索フォームの入力値の型定義
@@ -21,7 +22,7 @@ export interface EventSearchFormData {
   endDate: string;
   /** 選択された都道府県の配列 */
   prefectures: string[];
-  /** 開催日の絞り込み（すべての日／木曜を除く／土日祝のみ） */
+  /** 開催日の絞り込み（すべての日／木曜を除く／土日祝のみ／金曜日のみ） */
   dayFilter: DayFilterOption;
 }
 
@@ -188,6 +189,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
               <option value="all">すべての日</option>
               <option value="excludeThursday">木曜を除く</option>
               <option value="weekendsAndHolidaysOnly">土日祝のみ</option>
+              <option value="fridayOnly">金曜日のみ</option>
             </select>
           </div>
         </div>

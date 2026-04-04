@@ -17,17 +17,22 @@ import { getServerEnv } from "../utils/utils";
  * @param cursor - 評価する日付
  * @param excludeThursday - 木曜を除外するか
  * @param weekendsAndHolidaysOnly - 土日祝に限定するか
+ * @param fridayOnly - 金曜に限定するか
  * @returns 検索対象に含めるなら true
  */
 const shouldIncludeDayForConnpassSearch = (
   cursor: Date,
   excludeThursday: boolean,
-  weekendsAndHolidaysOnly: boolean
+  weekendsAndHolidaysOnly: boolean,
+  fridayOnly: boolean
 ): boolean => {
   const weekdayJst = JapaneseHolidays.getJDay(cursor);
   const isWeekend = weekdayJst === 0 || weekdayJst === 6;
   const isHoliday = Boolean(JapaneseHolidays.isHolidayAt(cursor));
 
+  if (fridayOnly) {
+    return weekdayJst === 5;
+  }
   if (weekendsAndHolidaysOnly) {
     return isWeekend || isHoliday;
   }
@@ -96,6 +101,7 @@ const DAY_FILTER_VALUES: readonly DayFilterOption[] = [
   "all",
   "excludeThursday",
   "weekendsAndHolidaysOnly",
+  "fridayOnly",
 ] as const;
 
 /**
@@ -119,16 +125,42 @@ const parseDayFilter = (value: string | null): DayFilterOption => {
  */
 const dayFilterToBooleans = (
   dayFilter: DayFilterOption
-): { excludeThursday: boolean; weekendsAndHolidaysOnly: boolean } => {
+): {
+  excludeThursday: boolean;
+  weekendsAndHolidaysOnly: boolean;
+  fridayOnly: boolean;
+} => {
   switch (dayFilter) {
     case "all":
-      return { excludeThursday: false, weekendsAndHolidaysOnly: false };
+      return {
+        excludeThursday: false,
+        weekendsAndHolidaysOnly: false,
+        fridayOnly: false,
+      };
     case "excludeThursday":
-      return { excludeThursday: true, weekendsAndHolidaysOnly: false };
+      return {
+        excludeThursday: true,
+        weekendsAndHolidaysOnly: false,
+        fridayOnly: false,
+      };
     case "weekendsAndHolidaysOnly":
-      return { excludeThursday: false, weekendsAndHolidaysOnly: true };
+      return {
+        excludeThursday: false,
+        weekendsAndHolidaysOnly: true,
+        fridayOnly: false,
+      };
+    case "fridayOnly":
+      return {
+        excludeThursday: false,
+        weekendsAndHolidaysOnly: false,
+        fridayOnly: true,
+      };
     default:
-      return { excludeThursday: true, weekendsAndHolidaysOnly: false };
+      return {
+        excludeThursday: true,
+        weekendsAndHolidaysOnly: false,
+        fridayOnly: false,
+      };
   }
 };
 
@@ -165,7 +197,7 @@ export async function action({ request }: Route.ActionArgs) {
   const dayFilter = parseDayFilter(
     formData.get("dayFilter") as string | null
   );
-  const { excludeThursday, weekendsAndHolidaysOnly } =
+  const { excludeThursday, weekendsAndHolidaysOnly, fridayOnly } =
     dayFilterToBooleans(dayFilter);
   const startDate =
     startDateValue && !Number.isNaN(Date.parse(startDateValue))
@@ -199,7 +231,8 @@ export async function action({ request }: Route.ActionArgs) {
         shouldIncludeDayForConnpassSearch(
           cursor,
           excludeThursday,
-          weekendsAndHolidaysOnly
+          weekendsAndHolidaysOnly,
+          fridayOnly
         )
       ) {
         dates.push(cursor.toISOString().split("T")[0].replace(/-/g, ""));
