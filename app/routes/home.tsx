@@ -1,4 +1,5 @@
 import { useActionData, useNavigation } from "react-router";
+import JapaneseHolidays from "japanese-holidays";
 import type { Route } from "./+types/home";
 import { EventList } from "../components/EventList";
 import type { EventListItem } from "../components/EventList";
@@ -6,6 +7,32 @@ import { EventSearch } from "../components/EventSearch";
 import type { EventSearchFormData } from "../components/EventSearch";
 import { EventMap } from "../components/EventMap";
 import { getServerEnv } from "../utils/utils";
+
+/**
+ * Connpass の ymd 検索に含める日かどうかを判定します（日本時間の暦・祝日）。
+ *
+ * @param cursor - 評価する日付
+ * @param excludeThursday - 木曜を除外するか
+ * @param weekendsAndHolidaysOnly - 土日祝に限定するか
+ * @returns 検索対象に含めるなら true
+ */
+const shouldIncludeDayForConnpassSearch = (
+  cursor: Date,
+  excludeThursday: boolean,
+  weekendsAndHolidaysOnly: boolean
+): boolean => {
+  const weekdayJst = JapaneseHolidays.getJDay(cursor);
+  const isWeekend = weekdayJst === 0 || weekdayJst === 6;
+  const isHoliday = Boolean(JapaneseHolidays.isHolidayAt(cursor));
+
+  if (weekendsAndHolidaysOnly) {
+    return isWeekend || isHoliday;
+  }
+  if (excludeThursday && weekdayJst === 4) {
+    return false;
+  }
+  return true;
+};
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -92,6 +119,9 @@ export async function action({ request }: Route.ActionArgs) {
   const startDateValue = formData.get("startDate") as string | null;
   const endDateValue = formData.get("endDate") as string | null;
   const excludeThursdayValue = formData.get("excludeThursday") as string | null;
+  const weekendsAndHolidaysOnlyValue = formData.get(
+    "weekendsAndHolidaysOnly"
+  ) as string | null;
   const startDate =
     startDateValue && !Number.isNaN(Date.parse(startDateValue))
       ? new Date(startDateValue)
@@ -105,6 +135,7 @@ export async function action({ request }: Route.ActionArgs) {
   const { includeKeywords, excludeKeywords } = parseKeywordInput(keywordInput);
   const prefectures = formData.getAll("prefectures") as string[];
   const excludeThursday = excludeThursdayValue === "true";
+  const weekendsAndHolidaysOnly = weekendsAndHolidaysOnlyValue === "true";
   const formValues: EventSearchFormData = {
     keyword: keywordInput,
     startDate: startDateValue ?? "",
@@ -114,6 +145,7 @@ export async function action({ request }: Route.ActionArgs) {
         ? prefectures
         : (["tokyo"] as EventSearchFormData["prefectures"]),
     excludeThursday,
+    weekendsAndHolidaysOnly,
   };
 
   // 開始日から終了日までの日付を配列に入れる
@@ -121,7 +153,13 @@ export async function action({ request }: Route.ActionArgs) {
   if (startDate && endDate) {
     const cursor = new Date(startDate);
     while (cursor <= endDate) {
-      if (!(excludeThursday && cursor.getDay() === 4)) {
+      if (
+        shouldIncludeDayForConnpassSearch(
+          cursor,
+          excludeThursday,
+          weekendsAndHolidaysOnly
+        )
+      ) {
         dates.push(cursor.toISOString().split("T")[0].replace(/-/g, ""));
       }
       cursor.setDate(cursor.getDate() + 1);
@@ -231,6 +269,9 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
   const excludeThursdayValue =
     (formData.get("excludeThursday") as string | null) ?? "false";
   const excludeThursday = excludeThursdayValue === "true";
+  const weekendsAndHolidaysOnlyValue =
+    (formData.get("weekendsAndHolidaysOnly") as string | null) ?? "false";
+  const weekendsAndHolidaysOnly = weekendsAndHolidaysOnlyValue === "true";
   return {
     keyword,
     startDate,
@@ -240,6 +281,7 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
         ? prefectures
         : (["tokyo"] as EventSearchFormData["prefectures"]),
     excludeThursday,
+    weekendsAndHolidaysOnly,
   };
 };
 
