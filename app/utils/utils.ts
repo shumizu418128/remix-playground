@@ -1,3 +1,5 @@
+import JapaneseHolidays from "japanese-holidays";
+
 type ServerEnvKeys = "CONNPASS_API_KEY";
 
 type ServerEnv = Record<ServerEnvKeys, string>;
@@ -31,6 +33,9 @@ export function getServerEnv(): ServerEnv {
 /**
  * 日時文字列を日本語ロケールで読みやすく整形します。
  *
+ * その日が日本の祝日（振替休日を含む）のときは、曜日表記の直後に「祝」を付けます
+ * （例: 5/6(水祝) 14:30）。
+ *
  * Args:
  *   value: ISO形式などの日時文字列。
  *
@@ -47,11 +52,25 @@ export function formatDateTime(value?: string): string {
     return value;
   }
 
-  return new Intl.DateTimeFormat("ja-JP", {
+  const formatter = new Intl.DateTimeFormat("ja-JP", {
     month: "numeric",
     day: "numeric",
     weekday: "short",
     hour: "numeric",
     minute: "numeric",
-  }).format(date);
+  });
+
+  const isHoliday = Boolean(JapaneseHolidays.isHolidayAt(date));
+  let result = "";
+  for (const part of formatter.formatToParts(date)) {
+    if (part.type === "weekday") {
+      result += part.value;
+      if (isHoliday) {
+        result += "祝";
+      }
+    } else {
+      result += part.value;
+    }
+  }
+  return result;
 }
