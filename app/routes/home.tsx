@@ -287,7 +287,7 @@ export async function action({ request }: Route.ActionArgs) {
         event.place &&
         !/オンライン|online|abema|youtube|zoom|discord|teams/i.test(event.place) &&
         (!event.limit || event.limit > 10) &&
-        !/(もくもく|黙々|coderdojo|永田町|ハッカソン|girl)/i.test(event.title ?? "") &&
+        !/(もくもく|黙々|ゆるもく会|coderdojo|永田町|ハッカソン|hackathon|girl)/i.test(event.title ?? "") &&
         (event.accepted > 0 || event.event_type === "advertisement");
 
       if (!passesBaseConditions) {
