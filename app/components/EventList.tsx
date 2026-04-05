@@ -1,5 +1,8 @@
 import { useState, type ReactNode, type MouseEvent } from "react";
-import { formatDateTime } from "../utils/utils";
+import {
+  formatDateTime,
+  shouldShowEarlyWeekdayStartWarning,
+} from "../utils/utils";
 import { MAP_FOCUS_MARKER_EVENT } from "../constants/customEvents";
 import { EVENT_HIGHLIGHT_CLASSES } from "../constants/highlightClasses";
 /**
@@ -308,6 +311,9 @@ export function EventList({
                       日時
                     </dt>
                     <dd className="text-sm text-gray-800 dark:text-gray-100">
+                      {shouldShowEarlyWeekdayStartWarning(event.started_at) && (
+                        <span className="mr-1">⚠️</span>
+                      )}
                       {dateRangeDisplay}
                     </dd>
                   </div>
