@@ -216,7 +216,7 @@ export function EventList({
         </div>
         {hasMoreResults && (
           <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-200 text-2xl">
-            ⚠️ 検索結果が100件を超えている可能性があります
+            ⚠️ 検索結果が多すぎるため全件を表示できません
           </div>
         )}
       </header>
@@ -287,6 +287,11 @@ export function EventList({
                       rel="noreferrer"
                       className="text-blue-600 hover:underline"
                     >
+                      {(event.description ?? "").includes("食") && (
+                        <span className="mr-1" aria-hidden>
+                          🍱
+                        </span>
+                      )}
                       {event.title}
                     </a>
                   </h3>
