@@ -8,6 +8,7 @@ export type DayFilterOption =
   | "all"
   | "excludeThursday"
   | "weekendsAndHolidaysOnly"
+  | "weekdaysOnly"
   | "fridayOnly";
 
 /**
@@ -22,7 +23,7 @@ export interface EventSearchFormData {
   endDate: string;
   /** 選択された都道府県の配列 */
   prefectures: string[];
-  /** 開催日の絞り込み（すべての日／木曜を除く／土日祝のみ／金曜日のみ） */
+  /** 開催日の絞り込み（すべての日／木曜を除く／土日祝のみ／平日のみ／金曜日のみ） */
   dayFilter: DayFilterOption;
 }
 
@@ -190,6 +191,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
               <option value="all">すべての日</option>
               <option value="excludeThursday">木曜を除く</option>
               <option value="weekendsAndHolidaysOnly">土日祝のみ</option>
+              <option value="weekdaysOnly">平日のみ</option>
               <option value="fridayOnly">金曜日のみ</option>
             </select>
           </div>
