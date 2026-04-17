@@ -208,6 +208,25 @@ const buildSearchableText = (event: EventListItem) => {
     .toLowerCase();
 };
 
+const isEventStartingAfter19Jst = (startedAt: string) => {
+  const date = new Date(startedAt);
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
+    timeZone: "Asia/Tokyo",
+  }).formatToParts(date);
+  const hourInJst = Number(parts.find((part) => part.type === "hour")?.value);
+  const minuteInJst = Number(parts.find((part) => part.type === "minute")?.value);
+  if (!Number.isFinite(hourInJst) || !Number.isFinite(minuteInJst)) {
+    return false;
+  }
+  return hourInJst > 19 || (hourInJst === 19 && minuteInJst >= 0);
+};
+
 export async function action({ request }: Route.ActionArgs) {
   const { CONNPASS_API_KEY } = getServerEnv();
   const formData = await request.formData();
@@ -228,10 +247,12 @@ export async function action({ request }: Route.ActionArgs) {
       : startDate;
   const rawKeyword = formData.get("keyword");
   const keywordInput = typeof rawKeyword === "string" ? rawKeyword : "";
+  const onlyAfter19 = formData.get("onlyAfter19") === "1";
   const { includeKeywords, excludeKeywords } = parseKeywordInput(keywordInput);
   const prefectures = formData.getAll("prefectures") as string[];
   const formValues: EventSearchFormData = {
     keyword: keywordInput,
+    onlyAfter19,
     startDate: startDateValue ?? "",
     endDate: endDateValue ?? "",
     prefectures:
@@ -315,6 +336,9 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       if (normalizedIncludes.length === 0 && normalizedExcludes.length === 0) {
+        if (onlyAfter19) {
+          return isEventStartingAfter19Jst(event.started_at);
+        }
         return true;
       }
 
@@ -326,7 +350,15 @@ export async function action({ request }: Route.ActionArgs) {
         (keyword) => !searchableText.includes(keyword)
       );
 
-      return matchesIncludes && matchesExcludes;
+      if (!matchesIncludes || !matchesExcludes) {
+        return false;
+      }
+
+      if (onlyAfter19) {
+        return isEventStartingAfter19Jst(event.started_at);
+      }
+
+      return true;
     });
 
     // descriptionのhtmlタグを削除
@@ -358,6 +390,7 @@ export async function action({ request }: Route.ActionArgs) {
  */
 const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
   const keyword = (formData.get("keyword") as string | null) ?? "";
+  const onlyAfter19 = formData.get("onlyAfter19") === "1";
   const startDate = (formData.get("startDate") as string | null) ?? "";
   const endDate = (formData.get("endDate") as string | null) ?? "";
   const prefectures = formData.getAll("prefectures") as string[];
@@ -366,6 +399,7 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
   );
   return {
     keyword,
+    onlyAfter19,
     startDate,
     endDate,
     prefectures:

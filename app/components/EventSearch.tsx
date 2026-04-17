@@ -17,6 +17,8 @@ export type DayFilterOption =
 export interface EventSearchFormData {
   /** 検索キーワード */
   keyword: string;
+  /** 19時以降開始のイベントのみを表示するか */
+  onlyAfter19: boolean;
   /** 開始日 */
   startDate: string;
   /** 終了日 */
@@ -71,6 +73,9 @@ export function EventSearch({ initialValues }: EventSearchProps) {
   const defaultEndDate = useMemo(() => formatDate(defaultEnd), [defaultEnd]);
 
   const [keyword, setKeyword] = useState(initialValues?.keyword ?? "");
+  const [onlyAfter19, setOnlyAfter19] = useState(
+    initialValues?.onlyAfter19 ?? false
+  );
   const [startDate, setStartDate] = useState(
     initialValues?.startDate ?? defaultStartDate
   );
@@ -94,6 +99,10 @@ export function EventSearch({ initialValues }: EventSearchProps) {
   useEffect(() => {
     setKeyword(initialValues?.keyword ?? "");
   }, [initialValues?.keyword]);
+
+  useEffect(() => {
+    setOnlyAfter19(initialValues?.onlyAfter19 ?? false);
+  }, [initialValues?.onlyAfter19]);
 
   useEffect(() => {
     setStartDate(initialValues?.startDate ?? defaultStartDate);
@@ -149,13 +158,10 @@ export function EventSearch({ initialValues }: EventSearchProps) {
 
   return (
     <div className="w-full mx-auto p-5 bg-white dark:bg-gray-800 rounded-lg shadow-md max-h-[45vh] min-h-[280px] overflow-y-auto">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-        イベント検索
-      </h2>
       <Form method="post" className="space-y-4">
         {/* キーワード + 開催日の絞り込み（1:1） */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-2">
             <label
               htmlFor="keyword"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
@@ -171,6 +177,18 @@ export function EventSearch({ initialValues }: EventSearchProps) {
               onChange={(e) => setKeyword(e.target.value)}
               className="w-full min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             />
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                id="onlyAfter19"
+                name="onlyAfter19"
+                value="1"
+                checked={onlyAfter19}
+                onChange={(e) => setOnlyAfter19(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <span>19時以降のみ</span>
+            </label>
           </div>
           <div className="min-w-0">
             <label
@@ -235,9 +253,6 @@ export function EventSearch({ initialValues }: EventSearchProps) {
 
         {/* 都道府県選択 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            都道府県
-          </label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {PREFECTURES.map((pref) => (
               <label
