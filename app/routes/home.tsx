@@ -227,6 +227,25 @@ const isEventStartingAfter19Jst = (startedAt: string) => {
   return hourInJst > 19 || (hourInJst === 19 && minuteInJst >= 0);
 };
 
+const isWeekdayNonHolidayJst = (startedAt: string) => {
+  const date = new Date(startedAt);
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+  const weekdayJst = JapaneseHolidays.getJDay(date);
+  const isWeekend = weekdayJst === 0 || weekdayJst === 6;
+  const isHoliday = Boolean(JapaneseHolidays.isHolidayAt(date));
+  return !isWeekend && !isHoliday;
+};
+
+const passesWeekdayAfter19Filter = (startedAt: string) => {
+  // 平日(祝日を除く)のみ19時以降を必須とし、土日祝は時刻制限をかけない。
+  if (!isWeekdayNonHolidayJst(startedAt)) {
+    return true;
+  }
+  return isEventStartingAfter19Jst(startedAt);
+};
+
 export async function action({ request }: Route.ActionArgs) {
   const { CONNPASS_API_KEY } = getServerEnv();
   const formData = await request.formData();
@@ -337,7 +356,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       if (normalizedIncludes.length === 0 && normalizedExcludes.length === 0) {
         if (onlyAfter19) {
-          return isEventStartingAfter19Jst(event.started_at);
+          return passesWeekdayAfter19Filter(event.started_at);
         }
         return true;
       }
@@ -355,7 +374,7 @@ export async function action({ request }: Route.ActionArgs) {
       }
 
       if (onlyAfter19) {
-        return isEventStartingAfter19Jst(event.started_at);
+        return passesWeekdayAfter19Filter(event.started_at);
       }
 
       return true;

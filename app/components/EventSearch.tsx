@@ -17,7 +17,7 @@ export type DayFilterOption =
 export interface EventSearchFormData {
   /** 検索キーワード */
   keyword: string;
-  /** 19時以降開始のイベントのみを表示するか */
+  /** 平日は19時以降開始のイベントのみを表示するか */
   onlyAfter19: boolean;
   /** 開始日 */
   startDate: string;
@@ -187,7 +187,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
                 onChange={(e) => setOnlyAfter19(e.target.checked)}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
               />
-              <span>19時以降のみ</span>
+              <span>平日19時以前を除外</span>
             </label>
           </div>
           <div className="min-w-0">
