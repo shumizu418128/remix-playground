@@ -15,7 +15,7 @@ import { getServerEnv } from "../utils/utils";
  * Connpass の ymd 検索に含める日かどうかを判定します（日本時間の暦・祝日）。
  *
  * @param cursor - 評価する日付
- * @param excludeThursday - 木曜を除外するか
+ * @param excludeSaturday - 土曜を除外するか
  * @param weekendsAndHolidaysOnly - 土日祝に限定するか
  * @param weekdaysOnly - 平日（土日祝以外）に限定するか
  * @param fridayOnly - 金曜に限定するか
@@ -23,7 +23,7 @@ import { getServerEnv } from "../utils/utils";
  */
 const shouldIncludeDayForConnpassSearch = (
   cursor: Date,
-  excludeThursday: boolean,
+  excludeSaturday: boolean,
   weekendsAndHolidaysOnly: boolean,
   weekdaysOnly: boolean,
   fridayOnly: boolean
@@ -41,7 +41,7 @@ const shouldIncludeDayForConnpassSearch = (
   if (weekdaysOnly) {
     return !isWeekend && !isHoliday;
   }
-  if (excludeThursday && weekdayJst === 4) {
+  if (excludeSaturday && weekdayJst === 6) {
     return false;
   }
   return true;
@@ -104,7 +104,7 @@ const parseKeywordInput = (input: string | null) => {
 /** フォームの dayFilter として許容する値 */
 const DAY_FILTER_VALUES: readonly DayFilterOption[] = [
   "all",
-  "excludeThursday",
+  "excludeSaturday",
   "weekendsAndHolidaysOnly",
   "weekdaysOnly",
   "fridayOnly",
@@ -120,7 +120,7 @@ const parseDayFilter = (value: string | null): DayFilterOption => {
   if (value && DAY_FILTER_VALUES.includes(value as DayFilterOption)) {
     return value as DayFilterOption;
   }
-  return "excludeThursday";
+  return "excludeSaturday";
 };
 
 /**
@@ -132,7 +132,7 @@ const parseDayFilter = (value: string | null): DayFilterOption => {
 const dayFilterToBooleans = (
   dayFilter: DayFilterOption
 ): {
-  excludeThursday: boolean;
+  excludeSaturday: boolean;
   weekendsAndHolidaysOnly: boolean;
   weekdaysOnly: boolean;
   fridayOnly: boolean;
@@ -140,42 +140,42 @@ const dayFilterToBooleans = (
   switch (dayFilter) {
     case "all":
       return {
-        excludeThursday: false,
+        excludeSaturday: false,
         weekendsAndHolidaysOnly: false,
         weekdaysOnly: false,
         fridayOnly: false,
       };
-    case "excludeThursday":
+    case "excludeSaturday":
       return {
-        excludeThursday: true,
+        excludeSaturday: true,
         weekendsAndHolidaysOnly: false,
         weekdaysOnly: false,
         fridayOnly: false,
       };
     case "weekendsAndHolidaysOnly":
       return {
-        excludeThursday: false,
+        excludeSaturday: false,
         weekendsAndHolidaysOnly: true,
         weekdaysOnly: false,
         fridayOnly: false,
       };
     case "weekdaysOnly":
       return {
-        excludeThursday: false,
+        excludeSaturday: false,
         weekendsAndHolidaysOnly: false,
         weekdaysOnly: true,
         fridayOnly: false,
       };
     case "fridayOnly":
       return {
-        excludeThursday: false,
+        excludeSaturday: false,
         weekendsAndHolidaysOnly: false,
         weekdaysOnly: false,
         fridayOnly: true,
       };
     default:
       return {
-        excludeThursday: true,
+        excludeSaturday: true,
         weekendsAndHolidaysOnly: false,
         weekdaysOnly: false,
         fridayOnly: false,
@@ -254,7 +254,7 @@ export async function action({ request }: Route.ActionArgs) {
   const dayFilter = parseDayFilter(
     formData.get("dayFilter") as string | null
   );
-  const { excludeThursday, weekendsAndHolidaysOnly, weekdaysOnly, fridayOnly } =
+  const { excludeSaturday, weekendsAndHolidaysOnly, weekdaysOnly, fridayOnly } =
     dayFilterToBooleans(dayFilter);
   const startDate =
     startDateValue && !Number.isNaN(Date.parse(startDateValue))
@@ -289,7 +289,7 @@ export async function action({ request }: Route.ActionArgs) {
       if (
         shouldIncludeDayForConnpassSearch(
           cursor,
-          excludeThursday,
+          excludeSaturday,
           weekendsAndHolidaysOnly,
           weekdaysOnly,
           fridayOnly
@@ -414,7 +414,7 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
   const endDate = (formData.get("endDate") as string | null) ?? "";
   const prefectures = formData.getAll("prefectures") as string[];
   const dayFilter = parseDayFilter(
-    (formData.get("dayFilter") as string | null) ?? "excludeThursday"
+    (formData.get("dayFilter") as string | null) ?? "excludeSaturday"
   );
   return {
     keyword,

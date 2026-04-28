@@ -6,7 +6,7 @@ import { Form } from "react-router";
  */
 export type DayFilterOption =
   | "all"
-  | "excludeThursday"
+  | "excludeSaturday"
   | "weekendsAndHolidaysOnly"
   | "weekdaysOnly"
   | "fridayOnly";
@@ -25,7 +25,7 @@ export interface EventSearchFormData {
   endDate: string;
   /** 選択された都道府県の配列 */
   prefectures: string[];
-  /** 開催日の絞り込み（すべての日／木曜を除く／土日祝のみ／平日のみ／金曜日のみ） */
+  /** 開催日の絞り込み（すべての日／土曜を除く／土日祝のみ／平日のみ／金曜日のみ） */
   dayFilter: DayFilterOption;
 }
 
@@ -88,7 +88,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
       : ["tokyo"]
   );
   const [dayFilter, setDayFilter] = useState<DayFilterOption>(
-    initialValues?.dayFilter ?? "excludeThursday"
+    initialValues?.dayFilter ?? "excludeSaturday"
   );
 
   const prefecturesKey = useMemo(
@@ -121,7 +121,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
   }, [prefecturesKey]);
 
   useEffect(() => {
-    setDayFilter(initialValues?.dayFilter ?? "excludeThursday");
+    setDayFilter(initialValues?.dayFilter ?? "excludeSaturday");
   }, [initialValues?.dayFilter]);
 
   /**
@@ -207,7 +207,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
               className="w-full min-w-0 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 dark:text-white"
             >
               <option value="all">すべての日</option>
-              <option value="excludeThursday">木曜を除く</option>
+              <option value="excludeSaturday">土曜を除く</option>
               <option value="weekendsAndHolidaysOnly">土日祝のみ</option>
               <option value="weekdaysOnly">平日のみ</option>
               <option value="fridayOnly">金曜日のみ</option>
