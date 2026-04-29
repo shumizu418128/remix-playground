@@ -66,7 +66,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
   const today = useMemo(() => new Date(), []);
   const defaultEnd = useMemo(() => {
     const end = new Date(today);
-    end.setDate(end.getDate() + 7);
+    end.setDate(end.getDate() + 6);  // 今日から7日後
     return end;
   }, [today]);
   const defaultStartDate = useMemo(() => formatDate(today), [today]);
