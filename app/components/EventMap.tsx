@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EventListItem } from "./EventList";
-import { formatDateTime } from "../utils/utils";
+import {
+  formatDateTime,
+  shouldShowEarlyWeekdayStartWarning,
+} from "../utils/utils";
 import { MAP_FOCUS_MARKER_EVENT } from "../constants/customEvents";
 import { EVENT_HIGHLIGHT_CLASSES } from "../constants/highlightClasses";
 
@@ -278,7 +281,8 @@ export function EventMap({ events, isLoading = false }: MapProps) {
           const titleLink = document.createElement("a");
           titleLink.className =
             "text-left text-blue-600 hover:underline font-semibold focus:outline-none";
-          titleLink.textContent = event.title;
+          const hasMealKeyword = (event.description ?? "").includes("食");
+          titleLink.textContent = `${hasMealKeyword ? "🍱 " : ""}${event.title}`;
           titleLink.href = event.url;
           titleLink.target = "_blank";
           titleLink.rel = "noreferrer noopener";
@@ -305,7 +309,9 @@ export function EventMap({ events, isLoading = false }: MapProps) {
 
           const dateText = document.createElement("p");
           dateText.className = "text-xs text-gray-600";
-          dateText.textContent = dateRangeDisplay;
+          dateText.textContent = `${
+            shouldShowEarlyWeekdayStartWarning(event.started_at) ? "⚠️ " : ""
+          }${dateRangeDisplay}`;
 
           if (event.event_type === "advertisement") {
             dateText.textContent += " (connpass上からは応募不可)";
