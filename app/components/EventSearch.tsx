@@ -50,6 +50,12 @@ const PREFECTURES = [
 ] as const;
 
 /**
+ * 日付文字列を下限日付以上に丸める（YYYY-MM-DD 形式を想定）
+ */
+const clampDate = (value: string, minDate: string): string =>
+  value < minDate ? minDate : value;
+
+/**
  * イベント検索コンポーネント
  *
  * キーワード、日付範囲、都道府県でイベントを検索するためのフォームを提供します。
@@ -76,11 +82,11 @@ export function EventSearch({ initialValues }: EventSearchProps) {
   const [onlyAfter19, setOnlyAfter19] = useState(
     initialValues?.onlyAfter19 ?? false
   );
-  const [startDate, setStartDate] = useState(
-    initialValues?.startDate ?? defaultStartDate
+  const [startDate, setStartDate] = useState(() =>
+    clampDate(initialValues?.startDate ?? defaultStartDate, defaultStartDate)
   );
-  const [endDate, setEndDate] = useState(
-    initialValues?.endDate ?? defaultEndDate
+  const [endDate, setEndDate] = useState(() =>
+    clampDate(initialValues?.endDate ?? defaultEndDate, defaultStartDate)
   );
   const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>(
     initialValues?.prefectures && initialValues.prefectures.length > 0
@@ -105,12 +111,16 @@ export function EventSearch({ initialValues }: EventSearchProps) {
   }, [initialValues?.onlyAfter19]);
 
   useEffect(() => {
-    setStartDate(initialValues?.startDate ?? defaultStartDate);
+    setStartDate(
+      clampDate(initialValues?.startDate ?? defaultStartDate, defaultStartDate)
+    );
   }, [initialValues?.startDate, defaultStartDate]);
 
   useEffect(() => {
-    setEndDate(initialValues?.endDate ?? defaultEndDate);
-  }, [initialValues?.endDate, defaultEndDate]);
+    setEndDate(
+      clampDate(initialValues?.endDate ?? defaultEndDate, defaultStartDate)
+    );
+  }, [initialValues?.endDate, defaultEndDate, defaultStartDate]);
 
   useEffect(() => {
     setSelectedPrefectures(
@@ -141,18 +151,18 @@ export function EventSearch({ initialValues }: EventSearchProps) {
    * 開始日・終了日が矛盾している場合、同じ日にする
    */
   const handleStartDateChange = (value: string) => {
-    if (value > endDate) {
-      setEndDate(value);
-      setStartDate(value);
+    const clamped = clampDate(value, defaultStartDate);
+    if (clamped > endDate) {
+      setEndDate(clamped);
     }
-    setStartDate(value);
+    setStartDate(clamped);
   };
   const handleEndDateChange = (value: string) => {
-    if (value < startDate) {
-      setStartDate(value);
-      setEndDate(value);
+    const clamped = clampDate(value, defaultStartDate);
+    if (clamped < startDate) {
+      setStartDate(clamped);
     }
-    setEndDate(value);
+    setEndDate(clamped);
   };
 
 
@@ -229,6 +239,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
               id="startDate"
               name="startDate"
               value={startDate}
+              min={defaultStartDate}
               onChange={(e) => handleStartDateChange(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             />
@@ -245,6 +256,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
               id="endDate"
               name="endDate"
               value={endDate}
+              min={defaultStartDate}
               onChange={(e) => handleEndDateChange(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             />
