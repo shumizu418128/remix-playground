@@ -214,11 +214,11 @@ export function EventList({
   return (
     <section className="space-y-4">
       <header className="space-y-3">
-        <div className="text-2xl text-gray-500 dark:text-gray-400">
+        <div className="text-lg lg:text-2xl text-gray-500 dark:text-gray-400">
           全 {events.length} / {actualLength} 件のイベント
         </div>
         {hasMoreResults && (
-          <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-200 text-2xl">
+          <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700 dark:text-yellow-200 text-base lg:text-2xl">
             ⚠️ 検索結果が多すぎるため全件を表示できません
           </div>
         )}
@@ -246,12 +246,12 @@ export function EventList({
             id={`event-${event.id}`}
             tabIndex={-1}
             key={event.id}
-            className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow h-[270px] overflow-hidden cursor-pointer"
+            className="p-4 md:p-6 bg-white dark:bg-gray-800 rounded-lg shadow h-auto md:h-[272px] overflow-hidden cursor-pointer"
             onClick={(domEvent) => handleArticleClick(event.id, domEvent)}
           >
             <div className="flex flex-col md:flex-row gap-4">
               {event.image_url ? (
-                <figure className="md:w-1/4 h-[270px] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <figure className="md:w-1/4 h-48 md:h-[272px] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                   <a
                     href={event.url}
                     target="_blank"
@@ -266,7 +266,7 @@ export function EventList({
                   </a>
                 </figure>
               ) : (
-                <figure className="md:w-1/4 h-[270px] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center" />
+                <figure className="md:w-1/4 h-48 md:h-[272px] overflow-hidden rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex items-center justify-center" />
               )}
               <div className="flex-1 space-y-4">
                 <header className="space-y-1">
@@ -368,7 +368,7 @@ export function EventList({
           onClick={closeModal}
         >
           <div
-            className="w-full max-w-3xl max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 space-y-4"
+            className="w-full max-w-3xl max-h-[90dvh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 lg:p-6 space-y-4"
             onClick={(event) => event.stopPropagation()}
           >
             <header className="flex items-center justify-between">

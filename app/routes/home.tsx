@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { useActionData, useNavigation } from "react-router";
 import JapaneseHolidays from "japanese-holidays";
 import type { Route } from "./+types/home";
@@ -9,6 +10,11 @@ import type {
   EventSearchFormData,
 } from "../components/EventSearch";
 import { EventMap } from "../components/EventMap";
+import {
+  ResultsPanelTabs,
+  type ResultsPanel,
+} from "../components/ResultsPanelTabs";
+import { useIsLgUp } from "../hooks/useMediaQuery";
 import { getServerEnv } from "../utils/utils";
 
 /**
@@ -432,6 +438,9 @@ const formValuesFromFormData = (formData: FormData): EventSearchFormData => {
 export default function Home() {
   const actionData = useActionData<ActionResponse>();
   const navigation = useNavigation();
+  const isLgUp = useIsLgUp();
+  const [activePanel, setActivePanel] = useState<ResultsPanel>("list");
+  const [isMapCollapsed, setIsMapCollapsed] = useState(false);
   const events = actionData?.events ?? [];
   const errorMessage = actionData?.errorMessage;
   const isSubmitting = navigation.state === "submitting";
@@ -443,29 +452,83 @@ export default function Home() {
       ? formValuesFromFormData(navigation.formData)
       : actionData?.formValues;
 
+  const mapEventCount = useMemo(
+    () =>
+      events.filter((event) => {
+        const lat = Number(event.lat);
+        const lon = Number(event.lon);
+        return Number.isFinite(lat) && Number.isFinite(lon);
+      }).length,
+    [events]
+  );
+
+  useEffect(() => {
+    if (shouldShowList && !isLgUp) {
+      setActivePanel("list");
+    }
+  }, [shouldShowList, isLgUp, actionData?.events]);
+
+  const eventList = (
+    <EventList
+      events={events}
+      isLoading={isSubmitting}
+      error={errorMessage}
+      emptyMessage="条件に一致するイベントが見つかりませんでした。"
+      hasMoreResults={actionData?.hasMoreResults}
+      actualLength={actionData?.actualLength}
+    />
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 px-4 lg:py-8">
       <div className="w-full space-y-8">
         {!shouldShowList && (
           <div className="max-w-lg mx-auto">
             <EventSearch initialValues={formValues} />
           </div>
         )}
-        {shouldShowList && (
+        {shouldShowList && isLgUp && (
           <div className="grid gap-8 items-start lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
-            <div className="sticky top-6 space-y-4 self-start">
-              <EventSearch initialValues={formValues} />
-              <EventMap events={events} isLoading={isSubmitting} />
+            <div className="lg:sticky lg:top-6 space-y-4 self-start">
+              <EventSearch initialValues={formValues} variant="panel" />
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setIsMapCollapsed((prev) => !prev)}
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {isMapCollapsed ? "マップを表示" : "マップを非表示"}
+                </button>
+                {!isMapCollapsed && (
+                  <EventMap
+                    events={events}
+                    isLoading={isSubmitting}
+                    isPanelActive={!isMapCollapsed}
+                  />
+                )}
+              </div>
             </div>
-            <EventList
-              events={events}
-              isLoading={isSubmitting}
-              error={errorMessage}
-              emptyMessage="条件に一致するイベントが見つかりませんでした。"
-              hasMoreResults={actionData?.hasMoreResults}
-              actualLength={actionData?.actualLength}
-            />
+            {eventList}
           </div>
+        )}
+        {shouldShowList && !isLgUp && (
+          <ResultsPanelTabs
+            activePanel={activePanel}
+            onPanelChange={setActivePanel}
+            mapEventCount={mapEventCount}
+            searchContent={
+              <EventSearch initialValues={formValues} variant="panel" />
+            }
+            mapContent={
+              <EventMap
+                events={events}
+                isLoading={isSubmitting}
+                isPanelActive={activePanel === "map"}
+                variant="panel"
+              />
+            }
+            listContent={eventList}
+          />
         )}
       </div>
     </div>

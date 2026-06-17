@@ -83,6 +83,10 @@ export interface MapProps {
   events: EventListItem[];
   /** 読み込み中フラグ */
   isLoading?: boolean;
+  /** タブパネル内でアクティブかどうか */
+  isPanelActive?: boolean;
+  /** 表示バリアント（panel はタブ内の全高表示用） */
+  variant?: "default" | "panel";
 }
 
 /**
@@ -94,7 +98,12 @@ export interface MapProps {
  * Returns:
  *   イベントが存在する場合はLeafletマップ、存在しない場合は案内文。
  */
-export function EventMap({ events, isLoading = false }: MapProps) {
+export function EventMap({
+  events,
+  isLoading = false,
+  isPanelActive = true,
+  variant = "default",
+}: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fullScreenContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -111,6 +120,15 @@ export function EventMap({ events, isLoading = false }: MapProps) {
     resetLeafletContainer(containerRef.current);
   }, []);
 
+  const invalidateMapSize = useCallback(() => {
+    requestAnimationFrame(() => {
+      mapRef.current?.invalidateSize();
+    });
+    window.setTimeout(() => {
+      mapRef.current?.invalidateSize();
+    }, 100);
+  }, []);
+
   const geoEvents = useMemo(() => {
     return events.reduce<EventListItem[]>((acc, event) => {
       const lat = Number(event.lat);
@@ -123,6 +141,49 @@ export function EventMap({ events, isLoading = false }: MapProps) {
       return acc;
     }, []);
   }, [events]);
+
+  /**
+   * マーカー位置に合わせてマップの表示範囲を調整します。
+   */
+  const fitMapToMarkers = useCallback(() => {
+    if (!mapRef.current || !geoEvents.length || !window.L) {
+      return;
+    }
+
+    const L = window.L;
+    if (geoEvents.length === 1) {
+      mapRef.current.setView([geoEvents[0].lat, geoEvents[0].lon], 12);
+      return;
+    }
+
+    const bounds = L.latLngBounds(
+      geoEvents.map((event) => [event.lat, event.lon])
+    );
+    mapRef.current.fitBounds(bounds.pad(0.2));
+  }, [geoEvents]);
+
+  useEffect(() => {
+    if (!isPanelActive || !mapRef.current) {
+      return;
+    }
+    invalidateMapSize();
+    requestAnimationFrame(() => {
+      fitMapToMarkers();
+    });
+    window.setTimeout(() => {
+      fitMapToMarkers();
+    }, 100);
+  }, [fitMapToMarkers, invalidateMapSize, isPanelActive]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      invalidateMapSize();
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [invalidateMapSize]);
 
   const scrollToEventArticle = (eventId: number) => {
     if (typeof document === "undefined") {
@@ -336,11 +397,8 @@ export function EventMap({ events, isLoading = false }: MapProps) {
         markersLayer.addTo(mapRef.current);
         markersLayerRef.current = markersLayer;
 
-        if (geoEvents.length === 1) {
-          mapRef.current.setView([geoEvents[0].lat, geoEvents[0].lon], 12);
-        } else {
-          const bounds = L.latLngBounds(geoEvents.map((event) => [event.lat, event.lon]));
-          mapRef.current.fitBounds(bounds.pad(0.2));
+        if (isPanelActive) {
+          fitMapToMarkers();
         }
       } catch (error) {
         console.error("Leafletの読み込みに失敗しました: ", error);
@@ -353,7 +411,7 @@ export function EventMap({ events, isLoading = false }: MapProps) {
       isMounted = false;
       prevLoadingRef.current = isLoading;
     };
-  }, [destroyEventMapInstance, geoEvents, isLoading, isFullScreenOpen]);
+  }, [destroyEventMapInstance, fitMapToMarkers, geoEvents, isLoading, isFullScreenOpen, isPanelActive]);
 
   useEffect(() => {
     if (!isLoading && geoEvents.length === 0) {
@@ -371,7 +429,11 @@ export function EventMap({ events, isLoading = false }: MapProps) {
     return (
       <section className="space-y-2">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">マップ表示</h2>
-        <div className="w-full h-128 rounded-lg shadow bg-gray-200 dark:bg-gray-700 animate-pulse" />
+        <div
+          className={`w-full rounded-lg shadow bg-gray-200 dark:bg-gray-700 animate-pulse ${
+            variant === "panel" ? "h-full min-h-[256px] flex-1" : "h-64 lg:h-128"
+          }`}
+        />
       </section>
     );
   }
@@ -386,7 +448,9 @@ export function EventMap({ events, isLoading = false }: MapProps) {
   }
 
   return (
-    <section className="space-y-2">
+    <section
+      className={`space-y-2 ${variant === "panel" ? "flex min-h-0 flex-1 flex-col" : ""}`}
+    >
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">マップ表示</h2>
         <button
@@ -399,7 +463,11 @@ export function EventMap({ events, isLoading = false }: MapProps) {
       </div>
       <div
         ref={containerRef}
-        className={`w-full h-[45vh] min-h-[280px] max-h-[520px] rounded-lg shadow bg-gray-200 dark:bg-gray-700 overflow-hidden ${isFullScreenOpen ? "flex items-center justify-center" : ""}`}
+        className={`w-full rounded-lg shadow bg-gray-200 dark:bg-gray-700 overflow-hidden ${
+          variant === "panel"
+            ? "h-full min-h-[256px] flex-1"
+            : "h-[40vh] min-h-[256px] max-h-[480px] lg:h-[45vh] lg:max-h-[520px]"
+        } ${isFullScreenOpen ? "flex items-center justify-center" : ""}`}
       >
         {isFullScreenOpen && (
           <p className="text-sm text-gray-600 dark:text-gray-400">マップは全画面で表示中です</p>
@@ -410,7 +478,7 @@ export function EventMap({ events, isLoading = false }: MapProps) {
           role="dialog"
           aria-modal="true"
           aria-label="マップ全画面表示"
-          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-6 bg-black/40"
           onClick={() => setIsFullScreenOpen(false)}
         >
           <div

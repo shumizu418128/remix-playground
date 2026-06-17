@@ -32,11 +32,18 @@ export interface EventSearchFormData {
 /**
  * イベント検索コンポーネントのプロパティ
  */
+/**
+ * 検索フォームの表示バリアント
+ */
+export type EventSearchVariant = "default" | "panel";
+
 export interface EventSearchProps {
   /** 検索実行時のコールバック関数 */
   onSearch?: (formData: EventSearchFormData) => void;
   /** 初期値 */
   initialValues?: Partial<EventSearchFormData>;
+  /** 表示バリアント（panel はタブ内表示用） */
+  variant?: EventSearchVariant;
 }
 
 /**
@@ -63,7 +70,17 @@ const clampDate = (value: string, minDate: string): string =>
  * @param props - コンポーネントのプロパティ
  * @returns イベント検索フォームのJSX要素
  */
-export function EventSearch({ initialValues }: EventSearchProps) {
+const CONTAINER_CLASS_BY_VARIANT: Record<EventSearchVariant, string> = {
+  default:
+    "w-full mx-auto p-5 bg-white dark:bg-gray-800 rounded-lg shadow-md max-h-[45vh] min-h-[280px] overflow-y-auto",
+  panel:
+    "w-full mx-auto p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md max-h-none min-h-0 overflow-visible",
+};
+
+export function EventSearch({
+  initialValues,
+  variant = "default",
+}: EventSearchProps) {
   /**
    * Dateオブジェクトを日付入力用フォーマット(YYYY-MM-DD)へ変換
    */
@@ -167,7 +184,7 @@ export function EventSearch({ initialValues }: EventSearchProps) {
 
 
   return (
-    <div className="w-full mx-auto p-5 bg-white dark:bg-gray-800 rounded-lg shadow-md max-h-[45vh] min-h-[280px] overflow-y-auto">
+    <div className={CONTAINER_CLASS_BY_VARIANT[variant]}>
       <Form method="post" className="space-y-4">
         {/* キーワード + 開催日の絞り込み（1:1） */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
